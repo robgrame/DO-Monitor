@@ -39,6 +39,9 @@ param dcrSecretUri string
 @description('Application Insights connection string')
 param appInsightsConnectionString string
 
+@description('Client certificate thumbprint (stored in Key Vault for reference)')
+param clientCertThumbprint string = ''
+
 @description('Tags')
 param tags object = {}
 
@@ -54,11 +57,15 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   properties: {
     serverFarmId: appServicePlanId
     httpsOnly: true
+    clientCertEnabled: true
+    clientCertMode: 'Required'
+    clientCertExclusionPaths: '/api/health'
     siteConfig: {
-      powerShellVersion: '7.4'
+      netFrameworkVersion: 'v10.0'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
+      use32BitWorkerProcess: false
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
@@ -78,11 +85,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'powershell'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME_VERSION'
-          value: '7.4'
+          value: 'dotnet-isolated'
         }
         // Key Vault references for secrets
         {
@@ -126,22 +129,17 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   }
 }
 
-// Store Function App default key in Key Vault (for client script)
-resource functionAppHost 'Microsoft.Web/sites/host@2023-12-01' existing = {
-  parent: functionApp
-  name: 'default'
-}
-
+// Store client cert thumbprint in Key Vault (for reference by deploy scripts)
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
 }
 
-resource functionKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource certThumbprintSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (clientCertThumbprint != '') {
   parent: keyVault
-  name: 'FunctionAppHostKey'
+  name: 'ClientCertThumbprint'
   properties: {
-    value: functionAppHost.listKeys().functionKeys.default
-    contentType: 'Function App default host key for client script'
+    value: clientCertThumbprint
+    contentType: 'Client certificate thumbprint for DO-Monitor clients'
   }
 }
 

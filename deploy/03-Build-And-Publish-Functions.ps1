@@ -1,23 +1,27 @@
 <#
 .SYNOPSIS
-    Step 3 — Build and publish Azure Functions.
+    Step 3 — Build and publish Azure Functions (.NET 10).
 .DESCRIPTION
-    Builds the Function App package and publishes it to Azure.
-    Requires Azure Functions Core Tools (func) to be installed.
+    Builds the .NET 10 Function App project, creates a publish package,
+    and deploys it to Azure via zip deployment.
 .EXAMPLE
     .\03-Build-And-Publish-Functions.ps1
+    .\03-Build-And-Publish-Functions.ps1 -BuildOnly
+    .\03-Build-And-Publish-Functions.ps1 -Configuration Debug
 #>
 
 [CmdletBinding()]
 param(
-    [switch]$BuildOnly
+    [switch]$BuildOnly,
+    [ValidateSet("Release", "Debug")]
+    [string]$Configuration = "Release"
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host " DO-Monitor — Step 3: Build & Publish Functions" -ForegroundColor Cyan
+Write-Host " DO-Monitor — Step 3: Build & Publish Functions (.NET 10)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 # Load configuration
@@ -32,117 +36,95 @@ if (-not (Test-Path $OutputsFile)) {
 $Outputs = Get-Content $OutputsFile -Raw | ConvertFrom-Json
 $FunctionAppName = $Outputs.functionAppName.value
 
+# Paths
+$SolutionPath = Join-Path $Config.FunctionsPath "DO-Monitor.Functions.sln"
+$ProjectPath = Join-Path $Config.FunctionsPath "src\DO-Monitor.Functions\DO-Monitor.Functions.csproj"
+$PublishPath = Join-Path $PSScriptRoot "publish"
+$ZipPath = Join-Path $PSScriptRoot "functions.zip"
+
 # Step 1: Verify prerequisites
 Write-Host "`n[1/4] Checking prerequisites..." -ForegroundColor Yellow
 
-$FuncVersion = func --version 2>$null
-if (-not $FuncVersion) {
-    Write-Error "Azure Functions Core Tools not found. Install with: npm install -g azure-functions-core-tools@4 --unsafe-perm true"
+$DotnetVersion = dotnet --version 2>$null
+if (-not $DotnetVersion) {
+    Write-Error ".NET SDK not found. Install .NET 10 SDK from https://dot.net"
     exit 1
 }
-Write-Host "  Azure Functions Core Tools: v$FuncVersion" -ForegroundColor Green
+Write-Host "  .NET SDK: $DotnetVersion" -ForegroundColor Green
 
-# Step 2: Validate function structure
-Write-Host "`n[2/4] Validating function structure..." -ForegroundColor Yellow
-
-$FunctionsPath = $Config.FunctionsPath
-$RequiredFiles = @(
-    "host.json",
-    "requirements.psd1",
-    "DOIngest\function.json",
-    "DOIngest\run.ps1",
-    "DOProcessor\function.json",
-    "DOProcessor\run.ps1"
-)
-
-$MissingFiles = @()
-foreach ($File in $RequiredFiles) {
-    $FullPath = Join-Path $FunctionsPath $File
-    if (-not (Test-Path $FullPath)) {
-        $MissingFiles += $File
-    }
+if (-not $DotnetVersion.StartsWith("10.")) {
+    Write-Warning "  Expected .NET 10, found $DotnetVersion. Build may fail."
 }
 
-if ($MissingFiles.Count -gt 0) {
-    Write-Error "Missing function files:`n  $($MissingFiles -join "`n  ")"
+# Step 2: Restore packages
+Write-Host "`n[2/4] Restoring NuGet packages..." -ForegroundColor Yellow
+dotnet restore $ProjectPath --verbosity quiet
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "NuGet restore failed!"
     exit 1
 }
-Write-Host "  All function files present." -ForegroundColor Green
+Write-Host "  Packages restored." -ForegroundColor Green
 
-# Step 3: Build (package)
-Write-Host "`n[3/4] Building function package..." -ForegroundColor Yellow
+# Step 3: Build and publish
+Write-Host "`n[3/4] Building and publishing ($Configuration)..." -ForegroundColor Yellow
 
-$BuildOutput = Join-Path $PSScriptRoot "publish"
-if (Test-Path $BuildOutput) {
-    Remove-Item -Path $BuildOutput -Recurse -Force
-}
-New-Item -ItemType Directory -Path $BuildOutput -Force | Out-Null
+if (Test-Path $PublishPath) { Remove-Item -Path $PublishPath -Recurse -Force }
 
-# Copy function files to publish folder
-$FilesToCopy = @(
-    "host.json",
-    "requirements.psd1",
-    "profile.ps1",
-    "DOIngest",
-    "DOProcessor"
-)
+dotnet publish $ProjectPath `
+    --configuration $Configuration `
+    --output $PublishPath `
+    --verbosity quiet `
+    --no-restore
 
-foreach ($Item in $FilesToCopy) {
-    $Source = Join-Path $FunctionsPath $Item
-    if (Test-Path $Source) {
-        $Dest = Join-Path $BuildOutput $Item
-        if ((Get-Item $Source).PSIsContainer) {
-            Copy-Item -Path $Source -Destination $Dest -Recurse -Force
-        } else {
-            Copy-Item -Path $Source -Destination $Dest -Force
-        }
-    }
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Build failed!"
+    exit 1
 }
 
 # Create zip package
-$ZipPath = Join-Path $PSScriptRoot "functions.zip"
 if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
-Compress-Archive -Path "$BuildOutput\*" -DestinationPath $ZipPath -Force
+Compress-Archive -Path "$PublishPath\*" -DestinationPath $ZipPath -Force
 
-$ZipSize = [math]::Round((Get-Item $ZipPath).Length / 1KB, 1)
-Write-Host "  Package built: functions.zip ($ZipSize KB)" -ForegroundColor Green
+$ZipSize = [math]::Round((Get-Item $ZipPath).Length / 1MB, 2)
+Write-Host "  Build succeeded: functions.zip ($ZipSize MB)" -ForegroundColor Green
 
 if ($BuildOnly) {
     Write-Host "`n  Build-only mode. Skipping publish." -ForegroundColor Yellow
+    Remove-Item -Path $PublishPath -Recurse -Force -ErrorAction SilentlyContinue
     exit 0
 }
 
-# Step 4: Publish to Azure
-Write-Host "`n[4/4] Publishing to Azure Function App: $FunctionAppName ..." -ForegroundColor Yellow
+# Step 4: Deploy to Azure
+Write-Host "`n[4/4] Deploying to Azure Function App: $FunctionAppName ..." -ForegroundColor Yellow
 
-Push-Location $BuildOutput
-try {
-    func azure functionapp publish $FunctionAppName --powershell
+az functionapp deployment source config-zip `
+    --resource-group $Config.ResourceGroupName `
+    --name $FunctionAppName `
+    --src $ZipPath `
+    --build-remote false `
+    --output none
 
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "func publish failed. Trying az cli deployment..."
-        az functionapp deployment source config-zip `
-            --resource-group $Config.ResourceGroupName `
-            --name $FunctionAppName `
-            --src $ZipPath `
-            --output none
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Deployment failed!"
-            exit 1
-        }
-    }
-} finally {
-    Pop-Location
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Deployment failed!"
+    exit 1
 }
+
+# Restart Function App to pick up new code
+Write-Host "  Restarting Function App..." -ForegroundColor Gray
+az functionapp restart `
+    --resource-group $Config.ResourceGroupName `
+    --name $FunctionAppName `
+    --output none
 
 Write-Host "`n========================================" -ForegroundColor Green
 Write-Host " Functions published successfully!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Function App:  $FunctionAppName" -ForegroundColor White
-Write-Host "  Functions:     DOIngest (HTTP), DOProcessor (SB)" -ForegroundColor White
+Write-Host "  Function App:    $FunctionAppName" -ForegroundColor White
+Write-Host "  Runtime:         .NET 10 (isolated worker)" -ForegroundColor White
+Write-Host "  Configuration:   $Configuration" -ForegroundColor White
+Write-Host "  Functions:       DOIngest (HTTP), DOProcessor (SB Trigger)" -ForegroundColor White
 Write-Host ""
 
 # Cleanup
-Remove-Item -Path $BuildOutput -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $PublishPath -Recurse -Force -ErrorAction SilentlyContinue

@@ -1,16 +1,19 @@
 <#
 .SYNOPSIS
-    Step 5 — Generate the client detection script with actual Function URL.
+    Step 5 — Generate the client detection script with actual Function URL and cert thumbprint.
 .DESCRIPTION
-    Reads the deployment outputs, retrieves the Function App host key from
-    Key Vault, and generates a ready-to-deploy Intune detection script
-    with the correct Function URL and key.
+    Reads the deployment outputs and generates a ready-to-deploy Intune detection script
+    with the correct Function URL. The client certificate thumbprint must be provided
+    as the certificate is deployed to clients via Intune certificate profile.
 .EXAMPLE
-    .\05-Generate-ClientScript.ps1
+    .\05-Generate-ClientScript.ps1 -CertThumbprint "A1B2C3D4E5F6..."
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$CertThumbprint
+)
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -32,33 +35,15 @@ $Outputs = Get-Content $OutputsFile -Raw | ConvertFrom-Json
 
 # Get Function App URL
 $FunctionUrl = $Outputs.functionAppUrl.value
-Write-Host "`n[1/3] Function URL: $FunctionUrl" -ForegroundColor Yellow
-
-# Get Function key from Key Vault
-Write-Host "`n[2/3] Retrieving Function host key from Key Vault..." -ForegroundColor Yellow
-$KeyVaultName = $Outputs.keyVaultName.value
-$FunctionKey = az keyvault secret show `
-    --vault-name $KeyVaultName `
-    --name "FunctionAppHostKey" `
-    --query "value" -o tsv
-
-if (-not $FunctionKey) {
-    Write-Warning "Could not retrieve Function key from Key Vault."
-    Write-Warning "Retrieving directly from Function App..."
-    $FunctionAppName = $Outputs.functionAppName.value
-    $FunctionKey = az functionapp keys list `
-        --resource-group $Config.ResourceGroupName `
-        --name $FunctionAppName `
-        --query "functionKeys.default" -o tsv
-}
-
-$FullUrl = "${FunctionUrl}?code=${FunctionKey}"
+Write-Host "`n[1/2] Function URL: $FunctionUrl" -ForegroundColor Yellow
+Write-Host "  Cert Thumbprint: $CertThumbprint" -ForegroundColor Yellow
 
 # Generate the client script
-Write-Host "`n[3/3] Generating client detection script..." -ForegroundColor Yellow
+Write-Host "`n[2/2] Generating client detection script..." -ForegroundColor Yellow
 
 $ScriptTemplate = Get-Content (Join-Path $Config.ScriptsPath "Detect-DOStatus.ps1") -Raw
-$GeneratedScript = $ScriptTemplate -replace 'https://<YOUR-FUNCTION-APP>\.azurewebsites\.net/api/DOIngest\?code=<YOUR-FUNCTION-KEY>', $FullUrl
+$GeneratedScript = $ScriptTemplate -replace 'https://<YOUR-FUNCTION-APP>\.azurewebsites\.net/api/DOIngest', $FunctionUrl
+$GeneratedScript = $GeneratedScript -replace '<YOUR-CLIENT-CERT-THUMBPRINT>', $CertThumbprint
 
 $OutputScript = Join-Path $PSScriptRoot "Detect-DOStatus-READY.ps1"
 $GeneratedScript | Out-File -FilePath $OutputScript -Encoding utf8
@@ -69,12 +54,16 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Output: $OutputScript" -ForegroundColor White
 Write-Host ""
-Write-Host "  Next steps:" -ForegroundColor Yellow
-Write-Host "  1. Upload '$OutputScript' to Intune" -ForegroundColor White
-Write-Host "     Devices > Remediations > Create" -ForegroundColor Gray
-Write-Host "  2. Set as Detection Script (no Remediation script)" -ForegroundColor White
+Write-Host "  Prerequisites (on each client):" -ForegroundColor Yellow
+Write-Host "  - Client certificate with thumbprint '$CertThumbprint'" -ForegroundColor White
+Write-Host "    must be installed in Cert:\LocalMachine\My" -ForegroundColor Gray
+Write-Host "  - Deploy via Intune PKCS or SCEP certificate profile" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  Intune Remediation settings:" -ForegroundColor Yellow
+Write-Host "  1. Upload '$OutputScript' as Detection Script" -ForegroundColor White
+Write-Host "  2. No Remediation script needed" -ForegroundColor White
 Write-Host "  3. Run in 64-bit PowerShell: Yes" -ForegroundColor White
-Write-Host "  4. Run as logged-on user: No (run as SYSTEM)" -ForegroundColor White
+Write-Host "  4. Run as: SYSTEM (required for LocalMachine cert store)" -ForegroundColor White
 Write-Host "  5. Schedule: Every 6 hours" -ForegroundColor White
-Write-Host "  6. Assign to device group (all managed devices)" -ForegroundColor White
+Write-Host "  6. Assign to target device group" -ForegroundColor White
 Write-Host ""

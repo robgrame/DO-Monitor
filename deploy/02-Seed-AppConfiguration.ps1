@@ -48,6 +48,20 @@ $ConfigEntries = @(
     @{ Key = "DO-Monitor:MaxRetries";               Value = "3";                     Label = "prod"; ContentType = "" }
     @{ Key = "DO-Monitor:ClientMinFileSizeBytes";   Value = "0";                     Label = "prod"; ContentType = "" }
     @{ Key = "DO-Monitor:CollectionFrequencyHours"; Value = "6";                     Label = "prod"; ContentType = "" }
+    @{ Key = "DO-Monitor:Sentinel";                 Value = "1";                     Label = "prod"; ContentType = "" }
+
+    # Certificate Validation — disable by default, enable after configuring CA chains
+    @{ Key = "DO-Monitor:CertificateValidation:DisableValidation"; Value = "true";   Label = "prod"; ContentType = "" }
+
+    # Trusted CA Chain 1 (placeholder — update with actual thumbprints)
+    @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:0:Name";                Value = "Primary CA";              Label = "prod"; ContentType = "" }
+    @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:0:RootCaThumbprint";    Value = "<ROOT-CA-THUMBPRINT>";    Label = "prod"; ContentType = "" }
+    @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:0:SubCaThumbprints:0";  Value = "<SUB-CA-1-THUMBPRINT>";   Label = "prod"; ContentType = "" }
+
+    # Trusted CA Chain 2 (placeholder — add more chains as needed)
+    # @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:1:Name";              Value = "Secondary CA";            Label = "prod"; ContentType = "" }
+    # @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:1:RootCaThumbprint";  Value = "<ROOT-CA-2-THUMBPRINT>";  Label = "prod"; ContentType = "" }
+    # @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:1:SubCaThumbprints:0"; Value = "<SUB-CA-2-THUMBPRINT>"; Label = "prod"; ContentType = "" }
 )
 
 Write-Host "`n[2/2] Writing configuration entries..." -ForegroundColor Yellow

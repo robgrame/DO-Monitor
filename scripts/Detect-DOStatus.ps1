@@ -4,14 +4,24 @@
     Collects Delivery Optimization job details and sends them to Azure Function.
 .DESCRIPTION
     Gathers DO status from Get-DeliveryOptimizationStatus, enriches with device info,
-    and POSTs to the DOIngest Azure Function endpoint.
+    and POSTs to the DOIngest Azure Function endpoint using client certificate (mTLS).
     Returns compliant (exit 0) on success, non-compliant (exit 1) on failure.
 .NOTES
-    Configure $FunctionUrl before deployment.
+    Configure $FunctionUrl and $CertThumbprint before deployment.
+    The client certificate must be installed in LocalMachine\My store.
 #>
 
 # === CONFIGURATION ===
-$FunctionUrl = "https://<YOUR-FUNCTION-APP>.azurewebsites.net/api/DOIngest?code=<YOUR-FUNCTION-KEY>"
+$FunctionUrl = "https://<YOUR-FUNCTION-APP>.azurewebsites.net/api/DOIngest"
+$CertThumbprint = "<YOUR-CLIENT-CERT-THUMBPRINT>"
+
+# === LOAD CLIENT CERTIFICATE ===
+try {
+    $Certificate = Get-ChildItem -Path "Cert:\LocalMachine\My\$CertThumbprint" -ErrorAction Stop
+} catch {
+    Write-Output "Non-Compliant - Client certificate not found: $CertThumbprint"
+    exit 1
+}
 
 # === COLLECT DEVICE INFO ===
 try {
@@ -76,9 +86,9 @@ $Payload = @{
     Jobs          = $Jobs
 } | ConvertTo-Json -Depth 5 -Compress
 
-# === SEND TO AZURE FUNCTION ===
+# === SEND TO AZURE FUNCTION (mTLS) ===
 try {
-    $Response = Invoke-RestMethod -Uri $FunctionUrl -Method POST -Body $Payload -ContentType "application/json" -TimeoutSec 30 -ErrorAction Stop
+    $Response = Invoke-RestMethod -Uri $FunctionUrl -Method POST -Body $Payload -ContentType "application/json" -Certificate $Certificate -TimeoutSec 30 -ErrorAction Stop
     Write-Output "Compliant - Sent $($Jobs.Count) DO jobs. Peers: $([math]::Round(($Jobs | Measure-Object -Property BytesFromPeers -Sum).Sum / 1MB, 2)) MB, HTTP: $([math]::Round(($Jobs | Measure-Object -Property BytesFromHttp -Sum).Sum / 1MB, 2)) MB"
     exit 0
 } catch {

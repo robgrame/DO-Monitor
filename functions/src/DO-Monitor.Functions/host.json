@@ -6,13 +6,10 @@
         "isEnabled": true,
         "excludedTypes": "Request"
       }
+    },
+    "logLevel": {
+      "DOMonitor.Functions": "Information",
+      "default": "Warning"
     }
-  },
-  "extensionBundle": {
-    "id": "Microsoft.Azure.Functions.ExtensionBundle",
-    "version": "[4.*, 5.0.0)"
-  },
-  "managedDependency": {
-    "enabled": true
   }
 }
