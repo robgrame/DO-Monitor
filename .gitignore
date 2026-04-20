@@ -4,6 +4,11 @@ deploy/functions.zip
 deploy/deployment-outputs.json
 deploy/Detect-DOStatus-READY.ps1
 
+# .NET build
+**/bin/
+**/obj/
+*.user
+
 # IDE
 .vscode/
 .idea/
