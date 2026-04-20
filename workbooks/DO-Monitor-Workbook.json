@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workbookDisplayName": {
+      "type": "string",
+      "defaultValue": "Delivery Optimization Monitor"
+    },
+    "workbookSourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Log Analytics workspace"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "microsoft.insights/workbooks",
+      "apiVersion": "2022-04-01",
+      "name": "[guid('DO-Monitor-Workbook')]",
+      "location": "[resourceGroup().location]",
+      "kind": "shared",
+      "properties": {
+        "displayName": "[parameters('workbookDisplayName')]",
+        "serializedData": "{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":1,\"content\":{\"json\":\"# Delivery Optimization Monitor\\n---\\nMonitora l'utilizzo della Delivery Optimization su tutti i client.\"},\"name\":\"title\"},{\"type\":9,\"content\":{\"version\":\"KqlParameterItem/1.0\",\"parameters\":[{\"id\":\"timeRange\",\"version\":\"KqlParameterItem/1.0\",\"name\":\"TimeRange\",\"type\":4,\"isRequired\":true,\"value\":{\"durationMs\":604800000},\"typeSettings\":{\"selectableValues\":[{\"durationMs\":3600000},{\"durationMs\":86400000},{\"durationMs\":604800000},{\"durationMs\":2592000000}]}}]},\"name\":\"parameters\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n| summarize TotalPeers=sum(BytesFromPeers), TotalHttp=sum(BytesFromHttp), TotalCache=sum(BytesFromCacheServer)\\n| extend TotalAll = TotalPeers + TotalHttp + TotalCache\\n| project Source=\\\"Peers\\\", Bytes=TotalPeers\\n| union (DOStatus_CL | where TimeGenerated {TimeRange} | summarize Bytes=sum(BytesFromHttp) | project Source=\\\"HTTP/CDN\\\", Bytes)\\n| union (DOStatus_CL | where TimeGenerated {TimeRange} | summarize Bytes=sum(BytesFromCacheServer) | project Source=\\\"Cache Server\\\", Bytes)\",\"size\":1,\"title\":\"📊 Distribuzione traffico per sorgente\",\"queryType\":0,\"visualization\":\"piechart\"},\"name\":\"trafficDistribution\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n| summarize PeerBytes=sum(BytesFromPeers), HttpBytes=sum(BytesFromHttp), CacheBytes=sum(BytesFromCacheServer) by bin(TimeGenerated, 1d)\\n| extend PeerMB=round(PeerBytes/1048576.0, 2), HttpMB=round(HttpBytes/1048576.0, 2), CacheMB=round(CacheBytes/1048576.0, 2)\",\"size\":0,\"title\":\"📈 Trend giornaliero traffico (MB)\",\"queryType\":0,\"visualization\":\"linechart\"},\"name\":\"dailyTrend\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n| summarize TotalBytes=sum(TotalBytesDownloaded), PeerBytes=sum(BytesFromPeers), HttpBytes=sum(BytesFromHttp), CacheBytes=sum(BytesFromCacheServer), JobCount=count() by DeviceName\\n| extend PeerPct=round(100.0*PeerBytes/TotalBytes, 1), TotalMB=round(TotalBytes/1048576.0, 2)\\n| order by TotalBytes desc\\n| take 50\",\"size\":0,\"title\":\"🖥️ Top 50 device per traffico\",\"queryType\":0,\"visualization\":\"table\"},\"name\":\"topDevices\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n| summarize TotalBytes=sum(TotalBytesDownloaded), PeerBytes=sum(BytesFromPeers) by FileName\\n| extend PeerPct=round(100.0*PeerBytes/TotalBytes, 1), TotalMB=round(TotalBytes/1048576.0, 2)\\n| where TotalBytes > 0\\n| order by TotalBytes desc\\n| take 20\",\"size\":0,\"title\":\"📦 Top 20 file per dimensione download\",\"queryType\":0,\"visualization\":\"table\"},\"name\":\"topFiles\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n| summarize DeviceCount=dcount(DeviceName) by DownloadMode\\n| order by DeviceCount desc\",\"size\":1,\"title\":\"⚙️ Download Mode per device\",\"queryType\":0,\"visualization\":\"barchart\"},\"name\":\"downloadModes\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n| summarize PeerBytes=sum(BytesFromPeers), HttpBytes=sum(BytesFromHttp)\\n| extend BandwidthSavedMB=round(PeerBytes/1048576.0, 2), BandwidthSavedPct=round(100.0*PeerBytes/(PeerBytes+HttpBytes), 1)\",\"size\":4,\"title\":\"💰 Banda risparmiata tramite P2P\",\"queryType\":0,\"visualization\":\"tiles\",\"tileSettings\":{\"titleContent\":{\"columnMatch\":\"BandwidthSavedPct\",\"formatter\":1},\"subtitleContent\":{\"columnMatch\":\"BandwidthSavedMB\"}}},\"name\":\"bandwidthSaved\"}],\"isLocked\":false}",
+        "version": "1.0",
+        "sourceId": "[parameters('workbookSourceId')]",
+        "category": "workbook"
+      }
+    }
+  ]
+}

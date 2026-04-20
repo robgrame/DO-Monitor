@@ -1,0 +1,12 @@
+{
+  "bindings": [
+    {
+      "type": "serviceBusTrigger",
+      "direction": "in",
+      "name": "SBMessage",
+      "queueName": "%ServiceBusQueueName%",
+      "connection": "ServiceBusConnection",
+      "isSessionsEnabled": false
+    }
+  ]
+}

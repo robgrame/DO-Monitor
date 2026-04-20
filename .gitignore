@@ -1,0 +1,22 @@
+# Build artifacts
+deploy/publish/
+deploy/functions.zip
+deploy/deployment-outputs.json
+deploy/Detect-DOStatus-READY.ps1
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Azure Functions local settings (contains secrets)
+functions/local.settings.json
+
+# Logs
+*.log

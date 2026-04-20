@@ -1,0 +1,120 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workspaceResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Log Analytics workspace"
+      }
+    },
+    "actionGroupResourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Action Group for notifications"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "DO-HighHTTPTraffic",
+      "location": "[parameters('location')]",
+      "properties": {
+        "displayName": "DO - Traffico HTTP elevato (basso peer caching)",
+        "description": "Alert quando un device scarica più di 500 MB via HTTP senza utilizzare peer caching in un giorno.",
+        "severity": 2,
+        "enabled": true,
+        "evaluationFrequency": "PT1H",
+        "windowSize": "P1D",
+        "scopes": [ "[parameters('workspaceResourceId')]" ],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "DOStatus_CL\n| where TimeGenerated > ago(1d)\n| summarize HttpMB=round(sum(BytesFromHttp)/1048576.0, 2), PeerMB=round(sum(BytesFromPeers)/1048576.0, 2) by DeviceName\n| where HttpMB > 500 and PeerMB < 10\n| project DeviceName, HttpMB, PeerMB",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": [ "[parameters('actionGroupResourceId')]" ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "DO-NoDataReceived",
+      "location": "[parameters('location')]",
+      "properties": {
+        "displayName": "DO - Nessun dato ricevuto",
+        "description": "Alert quando non vengono ricevuti dati DO da nessun device per 24 ore.",
+        "severity": 1,
+        "enabled": true,
+        "evaluationFrequency": "PT6H",
+        "windowSize": "P1D",
+        "scopes": [ "[parameters('workspaceResourceId')]" ],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "DOStatus_CL\n| where TimeGenerated > ago(1d)\n| summarize Count=count()",
+              "timeAggregation": "Count",
+              "operator": "Equal",
+              "threshold": 0,
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": [ "[parameters('actionGroupResourceId')]" ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Insights/scheduledQueryRules",
+      "apiVersion": "2023-03-15-preview",
+      "name": "DO-LowPeerEfficiency",
+      "location": "[parameters('location')]",
+      "properties": {
+        "displayName": "DO - Efficienza peer caching sotto soglia",
+        "description": "Alert quando la percentuale globale di peer caching scende sotto il 20% nelle ultime 24 ore.",
+        "severity": 3,
+        "enabled": true,
+        "evaluationFrequency": "PT6H",
+        "windowSize": "P1D",
+        "scopes": [ "[parameters('workspaceResourceId')]" ],
+        "criteria": {
+          "allOf": [
+            {
+              "query": "DOStatus_CL\n| where TimeGenerated > ago(1d)\n| summarize TotalPeer=sum(BytesFromPeers), TotalHttp=sum(BytesFromHttp)\n| extend PeerPct=round(100.0*TotalPeer/(TotalPeer+TotalHttp), 1)\n| where PeerPct < 20",
+              "timeAggregation": "Count",
+              "operator": "GreaterThan",
+              "threshold": 0,
+              "failingPeriods": {
+                "numberOfEvaluationPeriods": 1,
+                "minFailingPeriodsToAlert": 1
+              }
+            }
+          ]
+        },
+        "actions": {
+          "actionGroups": [ "[parameters('actionGroupResourceId')]" ]
+        }
+      }
+    }
+  ]
+}
