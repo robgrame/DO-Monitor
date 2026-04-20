@@ -23,10 +23,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     supportsHttpsTrafficOnly: true
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
+    allowSharedKeyAccess: false
     defaultToOAuthAuthentication: true
   }
 }
 
 output id string = storageAccount.id
 output name string = storageAccount.name
-output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'

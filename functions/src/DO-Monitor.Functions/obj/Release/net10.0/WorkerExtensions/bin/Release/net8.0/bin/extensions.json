@@ -1,0 +1,5 @@
+{
+  "extensions":[
+    { "name": "ServiceBus", "typeName":"Microsoft.Azure.WebJobs.ServiceBus.ServiceBusWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.ServiceBus, Version=5.16.5.0, Culture=neutral, PublicKeyToken=92742159e12e44c8"}
+  ]
+}

@@ -36,6 +36,8 @@ param deployerPrincipalId string = ''
 // ---- Variables ----
 var resourceSuffix = '${baseName}-${environment}'
 var storageName = replace(toLower('${baseName}${environment}st'), '-', '')
+var workspaceName = last(split(logAnalyticsWorkspaceId, '/'))
+var workspaceResourceGroup = split(logAnalyticsWorkspaceId, '/')[4]
 var tags = {
   Project: 'DO-Monitor'
   Environment: environment
@@ -86,7 +88,7 @@ module keyVault 'modules/keyvault.bicep' = {
 module serviceBus 'modules/servicebus.bicep' = {
   name: 'deploy-servicebus'
   params: {
-    name: '${resourceSuffix}-sb'
+    name: '${resourceSuffix}-sbus'
     location: location
     queueName: 'do-telemetry'
     keyVaultName: '${resourceSuffix}-kv'
@@ -96,7 +98,20 @@ module serviceBus 'modules/servicebus.bicep' = {
 }
 
 // ============================================================
-// 5. DATA COLLECTION (DCE + DCR)
+// 5. CUSTOM TABLE (must exist before DCR)
+// ============================================================
+module customTable 'modules/customtable.bicep' = {
+  name: 'deploy-customtable'
+  scope: resourceGroup(workspaceResourceGroup)
+  params: {
+    workspaceName: workspaceName
+    tableName: 'DOStatus_CL'
+    retentionInDays: 90
+  }
+}
+
+// ============================================================
+// 6. DATA COLLECTION (DCE + DCR)
 // ============================================================
 module dataCollection 'modules/datacollection.bicep' = {
   name: 'deploy-datacollection'
@@ -108,7 +123,7 @@ module dataCollection 'modules/datacollection.bicep' = {
     keyVaultName: '${resourceSuffix}-kv'
     tags: tags
   }
-  dependsOn: [keyVault]
+  dependsOn: [keyVault, customTable]
 }
 
 // ============================================================
@@ -120,7 +135,7 @@ module functionApp 'modules/functionapp.bicep' = {
     name: '${resourceSuffix}-func'
     location: location
     appServicePlanId: monitoring.outputs.appServicePlanId
-    storageConnectionString: storage.outputs.connectionString
+    storageAccountName: storage.outputs.name
     keyVaultUri: keyVault.outputs.uri
     keyVaultName: '${resourceSuffix}-kv'
     appConfigEndpoint: appConfig.outputs.endpoint
@@ -149,9 +164,79 @@ module appConfig 'modules/appconfig.bicep' = {
 // 8. RBAC ASSIGNMENTS (post Function App creation)
 // ============================================================
 
+// Function App → Storage Blob Data Owner (for AzureWebJobsStorage RBAC)
+resource storageBlobDataOwnerRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'StorageBlobDataOwner')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      'b7e6dc6d-f1e8-4753-8033-0f276bb0955b' // Storage Blob Data Owner
+    )
+    principalId: functionApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Function App → Storage Queue Data Contributor (for AzureWebJobsStorage RBAC)
+resource storageQueueDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'StorageQueueDataContributor')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '974c5e8b-45b9-4653-ba55-5f855dd0fb88' // Storage Queue Data Contributor
+    )
+    principalId: functionApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Function App → Storage Account Contributor (for content share management)
+resource storageAccountContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'StorageAccountContributor')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '17d1049b-9a84-46fb-8f53-869881c3d3ab' // Storage Account Contributor
+    )
+    principalId: functionApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Function App → Storage Table Data Contributor (for AzureWebJobsStorage RBAC)
+resource storageTableDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'StorageTableDataContributor')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3' // Storage Table Data Contributor
+    )
+    principalId: functionApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Function App → Storage File Data SMB Share Contributor (for content share)
+resource storageFileShareRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'StorageFileShareContributor')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb' // Storage File Data SMB Share Contributor
+    )
+    principalId: functionApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Function App → Key Vault Secrets User
 resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(keyVault.outputs.id, functionApp.outputs.principalId, 'KVSecretsUser')
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'KVSecretsUser')
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId(
@@ -165,7 +250,7 @@ resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 
 // Function App → App Configuration Data Reader
 resource appConfigReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(appConfig.outputs.id, functionApp.outputs.principalId, 'AppConfigReader')
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'AppConfigReader')
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId(
@@ -179,7 +264,7 @@ resource appConfigReaderRole 'Microsoft.Authorization/roleAssignments@2022-04-01
 
 // Function App → Monitoring Metrics Publisher on DCR
 resource monitoringPublisherRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(dataCollection.outputs.dcrId, functionApp.outputs.principalId, 'MonitoringPublisher')
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'MonitoringPublisher')
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId(
@@ -193,7 +278,7 @@ resource monitoringPublisherRole 'Microsoft.Authorization/roleAssignments@2022-0
 
 // Deployer → Key Vault Secrets Officer (for seeding secrets)
 resource deployerKvRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (deployerPrincipalId != '') {
-  name: guid(keyVault.outputs.id, deployerPrincipalId, 'KVSecretsOfficer')
+  name: guid(resourceGroup().id, deployerPrincipalId, 'KVSecretsOfficer')
   scope: resourceGroup()
   properties: {
     roleDefinitionId: subscriptionResourceId(

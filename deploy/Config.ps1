@@ -12,7 +12,7 @@
 
 # Azure subscription and resource group
 $Config = @{
-    SubscriptionId          = "<YOUR-SUBSCRIPTION-ID>"
+    SubscriptionId          = "b45c5b53-d8f3-4a4c-9fe5-5537818a9886"
     ResourceGroupName       = "rg-domonitor-prod"
     Location                = "westeurope"
 
@@ -21,7 +21,7 @@ $Config = @{
     Environment             = "prod"
 
     # Existing Log Analytics Workspace resource ID
-    LogAnalyticsWorkspaceId = "<YOUR-LOG-ANALYTICS-WORKSPACE-RESOURCE-ID>"
+    LogAnalyticsWorkspaceId = "/subscriptions/b45c5b53-d8f3-4a4c-9fe5-5537818a9886/resourceGroups/rg-wufb-reports/providers/Microsoft.OperationalInsights/workspaces/law-wufb-reports"
 
     # Function App name (derived)
     FunctionAppName         = "domonitor-prod-func"
@@ -33,7 +33,7 @@ $Config = @{
     KeyVaultName            = "domonitor-prod-kv"
 
     # Service Bus name (derived)
-    ServiceBusName          = "domonitor-prod-sb"
+    ServiceBusName          = "domonitor-prod-sbus"
 
     # Paths
     ProjectRoot             = $PSScriptRoot | Split-Path

@@ -29,16 +29,19 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-// ---- App Service Plan (Consumption) ----
+// ---- App Service Plan (Elastic Premium — supports full RBAC storage) ----
 resource appPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${baseName}-plan'
   location: location
   tags: tags
   sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
+    name: 'EP1'
+    tier: 'ElasticPremium'
+    family: 'EP'
   }
+  kind: 'elastic'
   properties: {
+    maximumElasticWorkerCount: 20
     reserved: false
   }
 }

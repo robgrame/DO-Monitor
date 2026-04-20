@@ -1,6 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 using DOMonitor.Functions.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
 using Microsoft.Extensions.Logging;
@@ -51,7 +51,7 @@ public sealed class ClientCertificateValidationMiddleware : IFunctionsWorkerMidd
                 try
                 {
                     var certBytes = Convert.FromBase64String(certHeader);
-                    clientCert = new X509Certificate2(certBytes);
+                    clientCert = X509CertificateLoader.LoadCertificate(certBytes);
                 }
                 catch (Exception ex)
                 {
@@ -67,13 +67,15 @@ public sealed class ClientCertificateValidationMiddleware : IFunctionsWorkerMidd
 
             var response = httpRequestData.CreateResponse();
             response.StatusCode = System.Net.HttpStatusCode.Forbidden;
-            await response.WriteAsJsonAsync(new
+            response.Headers.Add("Content-Type", "application/json");
+
+            var errorBody = JsonSerializer.SerializeToUtf8Bytes(new
             {
                 error = "Forbidden",
                 message = "Client certificate is not trusted. The certificate must be issued by a configured trusted CA."
             });
+            await response.Body.WriteAsync(errorBody);
 
-            // Set the invocation result to the 403 response
             context.GetInvocationResult().Value = response;
             return;
         }

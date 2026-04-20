@@ -11,9 +11,8 @@ param location string = resourceGroup().location
 @description('App Service Plan ID')
 param appServicePlanId string
 
-@description('Storage Account connection string')
-@secure()
-param storageConnectionString string
+@description('Storage Account name (for RBAC-based auth)')
+param storageAccountName string
 
 @description('Key Vault URI')
 param keyVaultUri string
@@ -67,17 +66,22 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       http20Enabled: true
       use32BitWorkerProcess: false
       appSettings: [
+        // Storage: full RBAC (Managed Identity) — no shared key
         {
-          name: 'AzureWebJobsStorage'
-          value: storageConnectionString
+          name: 'AzureWebJobsStorage__accountName'
+          value: storageAccountName
         }
         {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: storageConnectionString
+          name: 'AzureWebJobsStorage__blobServiceUri'
+          value: 'https://${storageAccountName}.blob.${environment().suffixes.storage}'
         }
         {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(name)
+          name: 'AzureWebJobsStorage__queueServiceUri'
+          value: 'https://${storageAccountName}.queue.${environment().suffixes.storage}'
+        }
+        {
+          name: 'AzureWebJobsStorage__tableServiceUri'
+          value: 'https://${storageAccountName}.table.${environment().suffixes.storage}'
         }
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
