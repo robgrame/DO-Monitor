@@ -103,9 +103,11 @@ $AppBody = @{
     )
 }
 
+$AppJson = $AppBody | ConvertTo-Json -Depth 10
+
 $App = Invoke-MgGraphRequest -Method POST `
     -Uri "https://graph.microsoft.com/beta/deviceAppManagement/mobileApps" `
-    -Body $AppBody
+    -Body $AppJson -ContentType "application/json"
 Write-Host "  App created: $($App.displayName) (ID: $($App.id))" -ForegroundColor Green
 
 # ---- Upload content ----
