@@ -1,7 +1,9 @@
 # 🚀 DO-Monitor — Delivery Optimization Monitoring for Intune
 
+**v2.0.0**
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Azure Functions](https://img.shields.io/badge/Azure%20Functions-PowerShell%207.4-blue)](https://learn.microsoft.com/azure/azure-functions/)
+[![Azure Functions](https://img.shields.io/badge/Azure%20Functions-.NET%2010-blue)](https://learn.microsoft.com/azure/azure-functions/)
 [![Bicep](https://img.shields.io/badge/IaC-Bicep-orange)](https://learn.microsoft.com/azure/azure-resource-manager/bicep/)
 
 > **Enterprise-grade monitoring solution** that collects Windows Delivery Optimization telemetry from Intune-managed devices and centralizes it in Azure Log Analytics for analysis, dashboards, and alerting.
@@ -18,6 +20,7 @@
 - [Project Structure](#project-structure)
 - [Deployment Guide](#deployment-guide)
 - [Configuration](#configuration)
+- [Certificate Management](#certificate-management)
 - [Monitoring & Alerting](#monitoring--alerting)
 - [Cost Estimation](#cost-estimation)
 - [Contributing](#contributing)
@@ -31,7 +34,8 @@ Windows **Delivery Optimization (DO)** enables peer-to-peer content sharing to r
 
 **DO-Monitor** fills this gap by:
 - Collecting DO job details from every client via **Intune Proactive Remediations**
-- Ingesting data through a **serverless Azure Function** pipeline
+- Authenticating clients via **mutual TLS (mTLS)** with client certificates
+- Ingesting data through a **serverless Azure Function** pipeline (.NET 10)
 - Storing structured telemetry in **Log Analytics** custom tables
 - Providing **Workbook dashboards** and **Alert Rules** for operational visibility
 
@@ -52,21 +56,26 @@ Windows **Delivery Optimization (DO)** enables peer-to-peer content sharing to r
 │  CLIENTS (Intune-managed Windows devices)               │
 │  Proactive Remediation runs every 6h                    │
 │  Collects DO jobs via Get-DeliveryOptimizationStatus    │
-│  POSTs JSON payload via HTTPS                           │
+│  POSTs JSON payload via HTTPS + client certificate      │
 └───────────────────────┬────────────────────────────────┘
-                        │
+                        │ mTLS (client cert)
                         ▼
 ┌────────────────────────────────────────────────────────┐
-│  AZURE FUNCTION APP (Consumption, PowerShell 7.4)       │
+│  AZURE FUNCTION APP (.NET 10 isolated, Elastic Premium) │
+│  ┌──────────────────┐                                   │
+│  │ Cert Validation   │  Middleware: validates client     │
+│  │ Middleware         │  cert chain against App Config   │
+│  └────────┬─────────┘                                   │
+│           ▼                                             │
 │  ┌──────────────┐     ┌───────────────────────────┐    │
 │  │ DOIngest      │────►│ Azure Service Bus          │    │
 │  │ (HTTP Trigger)│     │ Queue: do-telemetry        │    │
-│  └──────────────┘     └───────────┬───────────────┘    │
-│                                   │                     │
+│  └──────────────┘     │ (Managed Identity auth)    │    │
+│                        └───────────┬───────────────┘    │
 │  ┌──────────────┐                 │                     │
 │  │ DOProcessor   │◄───────────────┘                     │
 │  │ (SB Trigger)  │──► Data Collection API (DCR/DCE)     │
-│  └──────────────┘     Managed Identity auth             │
+│  └──────────────┘     (Managed Identity auth)           │
 └────────────────────────────────────────────────────────┘
                         │
                         ▼
@@ -83,27 +92,34 @@ Windows **Delivery Optimization (DO)** enables peer-to-peer content sharing to r
 └────────────────────────────────────────────────────────┘
 ```
 
-### Security
+### Security — Full RBAC, Zero Secrets
 
 | Layer | Mechanism |
 |---|---|
-| Client → Function | HTTPS + Function Key |
-| Function → Service Bus | Connection string (Key Vault reference) |
-| Function → Log Analytics | **Managed Identity** (zero secrets) |
-| Secrets management | **Azure Key Vault** with RBAC |
-| Configuration | **Azure App Configuration** |
+| Client → Function | **mTLS** (client certificate, CA chain validation) |
+| Function → Service Bus | **Managed Identity** (Azure Service Bus Data Owner) |
+| Function → Log Analytics | **Managed Identity** (Monitoring Metrics Publisher) |
+| Function → Storage | **Managed Identity** (Blob/Queue/Table Data roles) |
+| Function → App Configuration | **Managed Identity** (App Configuration Data Reader) |
+| Secrets management | **Azure Key Vault** with RBAC authorization |
+| Configuration | **Azure App Configuration** with hot-reload |
+
+> No shared keys, no SAS tokens, no connection strings in app settings. All service-to-service authentication uses Managed Identity.
 
 ---
 
 ## Features
 
 - ✅ **Zero-agent** — Uses built-in Intune Proactive Remediations (no additional agent)
-- ✅ **Serverless** — Azure Functions Consumption plan (pay-per-execution)
+- ✅ **.NET 10** — Azure Functions isolated worker with C# for high performance
+- ✅ **mTLS authentication** — Client certificates with configurable CA chain validation
+- ✅ **Full RBAC** — All Azure resources use Managed Identity, zero shared keys
 - ✅ **Event-driven** — Service Bus decouples ingestion from processing
-- ✅ **Secure** — Managed Identity, Key Vault references, no hardcoded secrets
-- ✅ **Infrastructure as Code** — Full Bicep deployment with modular architecture
-- ✅ **Automated deployment** — PowerShell scripts for end-to-end deployment
-- ✅ **Observable** — Workbook dashboard, alert rules, Application Insights
+- ✅ **Infrastructure as Code** — Modular Bicep deployment (9 modules)
+- ✅ **Self-contained** — Optionally creates Log Analytics workspace (no pre-existing resources needed)
+- ✅ **Automated deployment** — 6-step PowerShell pipeline + `Deploy-All.ps1` orchestrator
+- ✅ **Hot-reload config** — CA chains updated via App Configuration without restart
+- ✅ **Observable** — Workbook dashboard, 3 alert rules, Application Insights
 - ✅ **Cost-effective** — ~$120/month for 60,000 devices at 4 collections/day
 
 ---
@@ -114,11 +130,10 @@ Windows **Delivery Optimization (DO)** enables peer-to-peer content sharing to r
 |---|---|
 | Azure subscription | Contributor access on target resource group |
 | Azure CLI | ≥ 2.60 |
-| Bicep CLI | ≥ 0.25 (bundled with Azure CLI) |
-| Azure Functions Core Tools | ≥ 4.x |
+| .NET SDK | **10.0** |
 | PowerShell | ≥ 7.4 |
 | Microsoft Intune | License with Proactive Remediations (Intune P1) |
-| Log Analytics workspace | Existing workspace |
+| Client certificate | Deployed to devices via Intune PKCS/SCEP profile |
 
 ---
 
@@ -126,17 +141,28 @@ Windows **Delivery Optimization (DO)** enables peer-to-peer content sharing to r
 
 ```powershell
 # 1. Clone the repository
-git clone https://github.com/<your-org>/DO-Monitor.git
+git clone https://github.com/robgrame/DO-Monitor.git
 cd DO-Monitor
 
 # 2. Edit deployment configuration
 notepad deploy\Config.ps1
 
-# 3. Run full deployment
+# 3. Run full deployment (infra + functions + monitoring)
 .\deploy\Deploy-All.ps1
 
-# 4. Upload generated script to Intune
-# Output: deploy\Detect-DOStatus-READY.ps1
+# 4. Add your trusted CA chain
+.\deploy\Manage-TrustedCAChains.ps1 -Action Add `
+    -ChainName "Corporate CA" `
+    -RootCaThumbprint "A1B2C3..." `
+    -SubCaThumbprints "D4E5F6..."
+
+# 5. Enable certificate validation
+.\deploy\Manage-TrustedCAChains.ps1 -Action Enable
+
+# 6. Generate client script with cert thumbprint
+.\deploy\05-Generate-ClientScript.ps1 -CertThumbprint "YOUR-CLIENT-CERT-THUMBPRINT"
+
+# 7. Upload deploy\Detect-DOStatus-READY.ps1 to Intune
 ```
 
 ---
@@ -146,50 +172,62 @@ notepad deploy\Config.ps1
 ```
 DO-Monitor/
 ├── scripts/
-│   └── Detect-DOStatus.ps1          # Intune detection script (client-side)
+│   └── Detect-DOStatus.ps1              # Intune detection script (client-side, mTLS)
 ├── functions/
-│   ├── host.json                     # Function App runtime config
-│   ├── requirements.psd1             # PowerShell module dependencies
-│   ├── DOIngest/                     # HTTP Trigger — receives client data
-│   │   ├── function.json
-│   │   └── run.ps1
-│   └── DOProcessor/                  # Service Bus Trigger — writes to Log Analytics
-│       ├── function.json
-│       └── run.ps1
+│   ├── DO-Monitor.Functions.sln         # Visual Studio solution
+│   └── src/DO-Monitor.Functions/
+│       ├── DO-Monitor.Functions.csproj   # .NET 10 project
+│       ├── Program.cs                    # DI, App Config, middleware registration
+│       ├── host.json                     # Function App runtime config
+│       ├── Functions/
+│       │   ├── DOIngest.cs               # HTTP Trigger → validates + queues to SB
+│       │   └── DOProcessor.cs            # SB Trigger → flattens + writes to Log Analytics
+│       ├── Middleware/
+│       │   └── ClientCertificateValidationMiddleware.cs  # mTLS CA chain validation
+│       ├── Models/
+│       │   ├── DOTelemetryPayload.cs     # Client payload model
+│       │   ├── DOLogEntry.cs             # Flattened Log Analytics entry
+│       │   └── CertificateValidationOptions.cs  # CA chain config model
+│       └── Services/
+│           ├── LogAnalyticsIngestionService.cs   # DCR/DCE ingestion with batching
+│           └── CertificateValidationService.cs   # CA chain validator
 ├── infra/
-│   ├── main.bicep                    # Main Bicep orchestrator
-│   ├── main.bicepparam               # Deployment parameters
+│   ├── main.bicep                        # Main orchestrator
+│   ├── main.bicepparam                   # Parameters file
 │   └── modules/
-│       ├── keyvault.bicep            # Azure Key Vault
-│       ├── appconfig.bicep           # Azure App Configuration
-│       ├── servicebus.bicep          # Azure Service Bus + queue
-│       ├── storage.bicep             # Storage Account
-│       ├── functionapp.bicep         # Function App + Managed Identity
-│       ├── datacollection.bicep      # DCE + DCR for Log Analytics
-│       └── monitoring.bicep          # App Insights + App Service Plan
+│       ├── loganalytics.bicep            # Log Analytics workspace (optional)
+│       ├── keyvault.bicep                # Azure Key Vault (RBAC auth)
+│       ├── appconfig.bicep               # Azure App Configuration
+│       ├── servicebus.bicep              # Service Bus (Managed Identity, no SAS)
+│       ├── storage.bicep                 # Storage Account (RBAC, no shared key)
+│       ├── functionapp.bicep             # Function App (EP1, mTLS, Managed Identity)
+│       ├── datacollection.bicep          # DCE + DCR for Log Analytics
+│       ├── customtable.bicep             # DOStatus_CL table schema
+│       └── monitoring.bicep              # App Insights + Elastic Premium plan
 ├── deploy/
-│   ├── Config.ps1                    # Shared deployment configuration
-│   ├── 01-Deploy-Infrastructure.ps1  # Step 1: Bicep deployment
-│   ├── 02-Seed-AppConfiguration.ps1  # Step 2: App Configuration entries
-│   ├── 03-Build-And-Publish-Functions.ps1  # Step 3: Function App deployment
-│   ├── 04-Deploy-Monitoring.ps1      # Step 4: Workbook + Alert Rules
-│   ├── 05-Generate-ClientScript.ps1  # Step 5: Generate ready-to-deploy script
-│   ├── 06-Validate-Deployment.ps1    # Step 6: End-to-end validation
-│   └── Deploy-All.ps1               # Full deployment orchestrator
+│   ├── Config.ps1                        # Deployment configuration
+│   ├── Deploy-All.ps1                    # Full orchestrator (steps 1-6)
+│   ├── 01-Deploy-Infrastructure.ps1      # Bicep deployment
+│   ├── 02-Seed-AppConfiguration.ps1      # App Configuration entries
+│   ├── 03-Build-And-Publish-Functions.ps1  # dotnet publish + zip deploy
+│   ├── 04-Deploy-Monitoring.ps1          # Workbook + Alert Rules
+│   ├── 05-Generate-ClientScript.ps1      # Generate Intune-ready script
+│   ├── 06-Validate-Deployment.ps1        # End-to-end validation
+│   └── Manage-TrustedCAChains.ps1        # CA chain CRUD operations
 ├── workbooks/
-│   └── DO-Monitor-Workbook.json      # Azure Workbook template
+│   └── DO-Monitor-Workbook.json          # Azure Workbook template
 ├── alerts/
-│   └── DO-Alert-Rules.json           # Scheduled Query Alert Rules
+│   └── DO-Alert-Rules.json               # Scheduled Query Alert Rules
 └── docs/
-    ├── Architecture.md               # Detailed architecture document
-    └── Cost-Estimation-60K.md        # Cost analysis for 60K devices
+    ├── Architecture.md                    # Detailed architecture document
+    └── Cost-Estimation-60K.md             # Cost analysis for 60K devices
 ```
 
 ---
 
 ## Deployment Guide
 
-### Step 1 — Configure
+### Config.ps1 — Configuration
 
 Edit `deploy\Config.ps1` with your Azure details:
 
@@ -200,64 +238,73 @@ $Config = @{
     Location                = "westeurope"
     BaseName                = "domonitor"
     Environment             = "prod"
-    LogAnalyticsWorkspaceId = "/subscriptions/.../resourceGroups/.../providers/Microsoft.OperationalInsights/workspaces/..."
+    # Leave empty to create a new workspace, or provide existing ID
+    LogAnalyticsWorkspaceId = ""
 }
 ```
 
-### Step 2 — Deploy Infrastructure
+### Deploy-All.ps1 — Full Deployment
 
 ```powershell
-# Preview changes first
-.\deploy\01-Deploy-Infrastructure.ps1 -WhatIf
+# Preview (what-if)
+.\deploy\Deploy-All.ps1 -WhatIf
 
-# Deploy
-.\deploy\01-Deploy-Infrastructure.ps1
+# Full deploy
+.\deploy\Deploy-All.ps1
+
+# Stop on first error
+.\deploy\Deploy-All.ps1 -StopOnError
 ```
 
-This creates: Key Vault, App Configuration, Storage, Service Bus, DCE/DCR, App Insights, Function App, and all RBAC assignments.
+### Individual Steps
 
-### Step 3 — Seed Configuration
+| Step | Script | Parameters |
+|---|---|---|
+| 1 | `01-Deploy-Infrastructure.ps1` | `-WhatIf` |
+| 2 | `02-Seed-AppConfiguration.ps1` | — |
+| 3 | `03-Build-And-Publish-Functions.ps1` | `-BuildOnly`, `-Configuration Release\|Debug` |
+| 4 | `04-Deploy-Monitoring.ps1` | — |
+| 5 | `05-Generate-ClientScript.ps1` | **`-CertThumbprint`** (required) |
+| 6 | `06-Validate-Deployment.ps1` | `-SendTestPayload` |
 
-```powershell
-.\deploy\02-Seed-AppConfiguration.ps1
-```
-
-### Step 4 — Deploy Functions
-
-```powershell
-.\deploy\03-Build-And-Publish-Functions.ps1
-```
-
-### Step 5 — Deploy Monitoring
-
-```powershell
-.\deploy\04-Deploy-Monitoring.ps1
-```
-
-### Step 6 — Generate Client Script
-
-```powershell
-.\deploy\05-Generate-ClientScript.ps1
-```
-
-This generates `deploy\Detect-DOStatus-READY.ps1` with the actual Function URL and key embedded.
-
-### Step 7 — Validate
-
-```powershell
-.\deploy\06-Validate-Deployment.ps1 -SendTestPayload
-```
-
-### Step 8 — Deploy to Intune
+### Deploy to Intune
 
 1. Open **Microsoft Intune admin center**
 2. Navigate to **Devices > Remediations > Create**
-3. Upload `Detect-DOStatus-READY.ps1` as the **Detection script**
-4. Do not add a Remediation script
-5. Set **Run in 64-bit PowerShell**: Yes
-6. Set **Run as**: System
+3. Upload `deploy\Detect-DOStatus-READY.ps1` as the **Detection script**
+4. No Remediation script needed
+5. **Run in 64-bit PowerShell**: Yes
+6. **Run as**: SYSTEM (required for LocalMachine cert store)
 7. **Schedule**: Every 6 hours
-8. **Assign** to your target device group
+8. **Assign** to target device group
+
+---
+
+## Certificate Management
+
+Client authentication uses mTLS with CA chain validation. Manage trusted CA chains via App Configuration (hot-reload, no Function restart needed):
+
+```powershell
+# List configured chains
+.\deploy\Manage-TrustedCAChains.ps1 -Action List
+
+# Add a new CA chain
+.\deploy\Manage-TrustedCAChains.ps1 -Action Add `
+    -ChainName "Corporate CA 2026" `
+    -RootCaThumbprint "A1B2C3D4E5F6..." `
+    -SubCaThumbprints "G7H8I9J0K1L2...", "M3N4O5P6Q7R8..."
+
+# Remove a chain by index
+.\deploy\Manage-TrustedCAChains.ps1 -Action Remove -ChainIndex 0
+
+# Enable validation (disable bypass)
+.\deploy\Manage-TrustedCAChains.ps1 -Action Enable
+
+# Disable validation (development only)
+.\deploy\Manage-TrustedCAChains.ps1 -Action Disable
+```
+
+Multiple CA chains are supported for certificate rotation and multi-CA environments.
 
 ---
 
@@ -268,27 +315,27 @@ This generates `deploy\Detect-DOStatus-READY.ps1` with the actual Function URL a
 | Key | Default | Description |
 |---|---|---|
 | `DO-Monitor:ServiceBusQueueName` | `do-telemetry` | Service Bus queue name |
-| `DO-Monitor:LogAnalyticsStreamName` | `Custom-DOStatus_CL` | Log Analytics custom table stream |
-| `DO-Monitor:BatchSize` | `500` | Batch size for Log Analytics ingestion |
+| `DO-Monitor:LogAnalyticsStreamName` | `Custom-DOStatus_CL` | Log Analytics stream |
+| `DO-Monitor:BatchSize` | `500` | Batch size for ingestion |
 | `DO-Monitor:MaxRetries` | `3` | Max retries for failed ingestion |
-| `DO-Monitor:ClientMinFileSizeBytes` | `0` | Minimum file size to report (filter small jobs) |
-| `DO-Monitor:CollectionFrequencyHours` | `6` | Collection frequency (informational) |
+| `DO-Monitor:ClientMinFileSizeBytes` | `0` | Min file size to report |
+| `DO-Monitor:CollectionFrequencyHours` | `6` | Collection frequency |
+| `DO-Monitor:Sentinel` | `1` | Change to trigger config refresh |
+| `DO-Monitor:CertificateValidation:DisableValidation` | `true` | Bypass cert validation |
+| `DO-Monitor:CertificateValidation:TrustedChains:N:*` | — | CA chain definitions |
 
 ### Key Vault Secrets
 
 | Secret | Description |
 |---|---|
-| `ServiceBusConnection` | Service Bus connection string |
 | `DcrImmutableId` | Data Collection Rule immutable ID |
-| `FunctionAppHostKey` | Function App default host key (for client script) |
+| `ClientCertThumbprint` | Client certificate thumbprint (reference) |
 
 ---
 
 ## Monitoring & Alerting
 
 ### Workbook Dashboard
-
-The included Azure Workbook provides:
 
 | Panel | Description |
 |---|---|
@@ -365,14 +412,39 @@ Estimated monthly cost for **60,000 devices** at **4 collections/day**:
 | Service | Cost/month |
 |---|---|
 | Log Analytics (ingestion ~34 GB) | ~$81 |
-| Azure Functions | ~$25 |
+| Azure Functions (Elastic Premium EP1) | ~$150 |
 | Log Analytics (retention 90d) | ~$8 |
 | Alert Rules (3) | ~$5 |
 | Storage Account | ~$2 |
-| Service Bus (Standard) | ~$1 |
-| **Total** | **~$122/month** |
+| Service Bus (Standard) | ~$10 |
+| **Total** | **~$256/month** |
+
+> With Consumption plan (where allowed by subscription policies), Functions cost drops to ~$25/month.
 
 See [docs/Cost-Estimation-60K.md](docs/Cost-Estimation-60K.md) for detailed breakdown and optimization strategies.
+
+---
+
+## Changelog
+
+### v2.0.0
+
+- **Breaking**: Migrated Azure Functions from PowerShell to **.NET 10** (C# isolated worker)
+- **Breaking**: Authentication changed from Function Key to **client certificates (mTLS)**
+- **Security**: Full RBAC — all resources use Managed Identity, no shared keys or SAS tokens
+- **Security**: CA chain validation middleware with multiple chain support
+- **Security**: Hot-reload CA chains via Azure App Configuration (no restart needed)
+- **Infra**: Switched to Elastic Premium (EP1) plan for full RBAC storage support
+- **Infra**: Log Analytics workspace is now optional (auto-created if not provided)
+- **Infra**: Added 9 modular Bicep modules (loganalytics, keyvault, appconfig, servicebus, storage, functionapp, datacollection, customtable, monitoring)
+- **Deploy**: Added `Manage-TrustedCAChains.ps1` for CA chain CRUD operations
+- **Deploy**: `Config.ps1` no longer requires pre-existing resources
+
+### v1.0.0
+
+- Initial release with PowerShell Azure Functions
+- Function Key authentication
+- Basic Bicep deployment
 
 ---
 
