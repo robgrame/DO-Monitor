@@ -84,7 +84,7 @@ $AppBody = @{
         deviceRestartBehavior      = "suppress"
     }
     minimumSupportedOperatingSystem = @{
-        v10_21H2 = $true
+        v10_21H1 = $true
     }
     applicableArchitectures        = "x64"
     setupFilePath                  = $SetupFile
