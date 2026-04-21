@@ -64,4 +64,10 @@ builder.Services.AddSingleton<ILogAnalyticsIngestionService, LogAnalyticsIngesti
 // Register client certificate validation middleware
 builder.UseMiddleware<ClientCertificateValidationMiddleware>();
 
+// Enable App Configuration hot-reload middleware
+if (!string.IsNullOrEmpty(appConfigEndpoint))
+{
+    builder.UseAzureAppConfiguration();
+}
+
 builder.Build().Run();

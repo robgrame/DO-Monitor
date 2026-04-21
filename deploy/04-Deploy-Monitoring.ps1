@@ -29,6 +29,17 @@ if (-not (Test-Path $OutputsFile)) {
 }
 $Outputs = Get-Content $OutputsFile -Raw | ConvertFrom-Json
 
+# Resolve workspace ID from outputs (handles both greenfield and existing workspace)
+$WorkspaceId = $Outputs.logAnalyticsWorkspaceId.value
+if (-not $WorkspaceId) {
+    $WorkspaceId = $Config.LogAnalyticsWorkspaceId
+}
+if (-not $WorkspaceId) {
+    Write-Error "Log Analytics workspace ID not found in outputs or config."
+    exit 1
+}
+Write-Host "  Workspace ID: $WorkspaceId" -ForegroundColor Gray
+
 # ---- Deploy Workbook ----
 Write-Host "`n[1/2] Deploying Azure Workbook..." -ForegroundColor Yellow
 
@@ -40,7 +51,7 @@ if (Test-Path $WorkbookTemplate) {
         --name $WorkbookDeployment `
         --resource-group $Config.ResourceGroupName `
         --template-file $WorkbookTemplate `
-        --parameters workbookSourceId=$($Config.LogAnalyticsWorkspaceId) `
+        --parameters workbookSourceId=$WorkspaceId `
         --output none
 
     if ($LASTEXITCODE -eq 0) {
@@ -86,7 +97,7 @@ if (Test-Path $AlertTemplate) {
         --resource-group $Config.ResourceGroupName `
         --template-file $AlertTemplate `
         --parameters `
-            workspaceResourceId=$($Config.LogAnalyticsWorkspaceId) `
+            workspaceResourceId=$WorkspaceId `
             actionGroupResourceId=$ActionGroupId `
         --output none
 

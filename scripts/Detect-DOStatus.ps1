@@ -40,13 +40,9 @@ try {
 try {
     $DOStatus = Get-DeliveryOptimizationStatus -ErrorAction Stop
 
-    if (-not $DOStatus -or $DOStatus.Count -eq 0) {
-        Write-Output "No DO jobs found."
-        exit 0
-    }
-
     $Jobs = @()
-    foreach ($Job in $DOStatus) {
+    if ($DOStatus -and $DOStatus.Count -gt 0) {
+        foreach ($Job in $DOStatus) {
         $Jobs += @{
             FileId              = $Job.FileId
             FileName            = if ($Job.FileName) { [System.IO.Path]::GetFileName($Job.FileName) } else { "" }
@@ -66,6 +62,7 @@ try {
             ExpireOn            = if ($Job.ExpireOn) { $Job.ExpireOn.ToString("o") } else { "" }
             IsPinned            = $Job.IsPinned
         }
+    }
     }
 } catch {
     Write-Output "Error collecting DO status: $($_.Exception.Message)"

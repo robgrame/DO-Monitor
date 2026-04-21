@@ -68,7 +68,7 @@
         "criteria": {
           "allOf": [
             {
-              "query": "DOStatus_CL\n| where TimeGenerated > ago(1d)\n| summarize Count=count()",
+              "query": "DOStatus_CL\n| where TimeGenerated > ago(1d)\n| take 1",
               "timeAggregation": "Count",
               "operator": "Equal",
               "threshold": 0,

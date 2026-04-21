@@ -50,8 +50,8 @@ $ConfigEntries = @(
     @{ Key = "DO-Monitor:CollectionFrequencyHours"; Value = "6";                     Label = "prod"; ContentType = "" }
     @{ Key = "DO-Monitor:Sentinel";                 Value = "1";                     Label = "prod"; ContentType = "" }
 
-    # Certificate Validation — disable by default, enable after configuring CA chains
-    @{ Key = "DO-Monitor:CertificateValidation:DisableValidation"; Value = "true";   Label = "prod"; ContentType = "" }
+    # Certificate Validation — ENABLED by default in prod
+    @{ Key = "DO-Monitor:CertificateValidation:DisableValidation"; Value = "false";   Label = "prod"; ContentType = "" }
 
     # CA chain placeholders are NOT seeded here.
     # Use Manage-TrustedCAChains.ps1 to add actual CA chains after deployment.

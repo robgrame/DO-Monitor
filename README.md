@@ -1,6 +1,6 @@
 # 🚀 DO-Monitor — Delivery Optimization Monitoring for Intune
 
-**v2.0.3**
+**v2.1.0**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-.NET%2010-blue)](https://learn.microsoft.com/azure/azure-functions/)
