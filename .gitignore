@@ -25,3 +25,7 @@ functions/local.settings.json
 
 # Logs
 *.log
+
+# IntuneWin output
+package/output/
+deploy/tools/
