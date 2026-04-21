@@ -6,6 +6,7 @@ using DOMonitor.Functions.Services;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -13,22 +14,30 @@ var builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
 
-// Azure App Configuration (hot-reload enabled)
+// Azure App Configuration (optional — graceful fallback if unavailable)
 var appConfigEndpoint = Environment.GetEnvironmentVariable("AppConfigEndpoint");
 if (!string.IsNullOrEmpty(appConfigEndpoint))
 {
-    builder.Configuration.AddAzureAppConfiguration(options =>
+    try
     {
-        options.Connect(new Uri(appConfigEndpoint), new DefaultAzureCredential())
-            .Select("DO-Monitor:*")
-            .ConfigureRefresh(refresh =>
-            {
-                refresh.Register("DO-Monitor:Sentinel", refreshAll: true)
-                       .SetRefreshInterval(TimeSpan.FromMinutes(5));
-            });
-    });
+        builder.Configuration.AddAzureAppConfiguration(options =>
+        {
+            options.Connect(new Uri(appConfigEndpoint), new DefaultAzureCredential())
+                .Select("DO-Monitor:*", LabelFilter.Null)
+                .Select("DO-Monitor:*", "prod")
+                .ConfigureRefresh(refresh =>
+                {
+                    refresh.Register("DO-Monitor:Sentinel", "prod", refreshAll: true)
+                           .SetRefreshInterval(TimeSpan.FromMinutes(5));
+                });
+        });
 
-    builder.Services.AddAzureAppConfiguration();
+        builder.Services.AddAzureAppConfiguration();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"WARNING: Failed to connect to App Configuration: {ex.Message}");
+    }
 }
 
 // Bind certificate validation options from App Configuration

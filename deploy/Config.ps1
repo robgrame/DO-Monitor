@@ -4,6 +4,9 @@
 .DESCRIPTION
     Centralizes all deployment parameters used by the deploy scripts.
     Edit this file before running any deployment script.
+    
+    LogAnalyticsWorkspaceId: leave empty to create a new workspace,
+    or provide an existing workspace resource ID.
 #>
 
 # ============================================================
@@ -20,19 +23,15 @@ $Config = @{
     BaseName                = "domonitor"
     Environment             = "prod"
 
-    # Existing Log Analytics Workspace resource ID
-    LogAnalyticsWorkspaceId = "/subscriptions/b45c5b53-d8f3-4a4c-9fe5-5537818a9886/resourceGroups/rg-wufb-reports/providers/Microsoft.OperationalInsights/workspaces/law-wufb-reports"
+    # Log Analytics Workspace resource ID
+    # Leave EMPTY ("") to create a new workspace automatically
+    # Or provide an existing workspace resource ID
+    LogAnalyticsWorkspaceId = ""
 
-    # Function App name (derived)
+    # Derived resource names (auto-calculated from BaseName + Environment)
     FunctionAppName         = "domonitor-prod-func"
-
-    # App Configuration name (derived)
     AppConfigName           = "domonitor-prod-appconfig"
-
-    # Key Vault name (derived)
     KeyVaultName            = "domonitor-prod-kv"
-
-    # Service Bus name (derived)
     ServiceBusName          = "domonitor-prod-sbus"
 
     # Paths

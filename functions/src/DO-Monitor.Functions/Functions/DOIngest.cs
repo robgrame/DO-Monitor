@@ -21,7 +21,6 @@ public sealed class DOIngest
     }
 
     [Function("DOIngest")]
-    [ServiceBusOutput("%ServiceBusQueueName%", Connection = "ServiceBusConnection")]
     public async Task<DOIngestResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
     {

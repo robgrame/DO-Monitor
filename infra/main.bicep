@@ -23,8 +23,8 @@ param baseName string
 @description('Azure region for deployment')
 param location string = resourceGroup().location
 
-@description('Log Analytics Workspace resource ID (existing)')
-param logAnalyticsWorkspaceId string
+@description('Existing Log Analytics Workspace resource ID. If empty, a new workspace is created.')
+param logAnalyticsWorkspaceId string = ''
 
 @description('Environment tag')
 @allowed(['dev', 'staging', 'prod'])
@@ -36,12 +36,27 @@ param deployerPrincipalId string = ''
 // ---- Variables ----
 var resourceSuffix = '${baseName}-${environment}'
 var storageName = replace(toLower('${baseName}${environment}st'), '-', '')
-var workspaceName = last(split(logAnalyticsWorkspaceId, '/'))
-var workspaceResourceGroup = split(logAnalyticsWorkspaceId, '/')[4]
+var createWorkspace = empty(logAnalyticsWorkspaceId)
+var resolvedWorkspaceId = createWorkspace ? logAnalyticsWorkspace.outputs.id : logAnalyticsWorkspaceId
+var resolvedWorkspaceName = createWorkspace ? logAnalyticsWorkspace.outputs.name : last(split(logAnalyticsWorkspaceId, '/'))
+var resolvedWorkspaceRg = createWorkspace ? resourceGroup().name : split(logAnalyticsWorkspaceId, '/')[4]
 var tags = {
   Project: 'DO-Monitor'
   Environment: environment
   ManagedBy: 'Bicep'
+}
+
+// ============================================================
+// 0. LOG ANALYTICS WORKSPACE (created only if not provided)
+// ============================================================
+module logAnalyticsWorkspace 'modules/loganalytics.bicep' = if (createWorkspace) {
+  name: 'deploy-loganalytics'
+  params: {
+    name: '${resourceSuffix}-law'
+    location: location
+    retentionInDays: 90
+    tags: tags
+  }
 }
 
 // ============================================================
@@ -52,7 +67,7 @@ module monitoring 'modules/monitoring.bicep' = {
   params: {
     baseName: resourceSuffix
     location: location
-    workspaceResourceId: logAnalyticsWorkspaceId
+    workspaceResourceId: resolvedWorkspaceId
     tags: tags
   }
 }
@@ -91,10 +106,8 @@ module serviceBus 'modules/servicebus.bicep' = {
     name: '${resourceSuffix}-sbus'
     location: location
     queueName: 'do-telemetry'
-    keyVaultName: '${resourceSuffix}-kv'
     tags: tags
   }
-  dependsOn: [keyVault]
 }
 
 // ============================================================
@@ -102,9 +115,9 @@ module serviceBus 'modules/servicebus.bicep' = {
 // ============================================================
 module customTable 'modules/customtable.bicep' = {
   name: 'deploy-customtable'
-  scope: resourceGroup(workspaceResourceGroup)
+  scope: resourceGroup(resolvedWorkspaceRg)
   params: {
-    workspaceName: workspaceName
+    workspaceName: resolvedWorkspaceName
     tableName: 'DOStatus_CL'
     retentionInDays: 90
   }
@@ -119,7 +132,7 @@ module dataCollection 'modules/datacollection.bicep' = {
     dceName: '${resourceSuffix}-dce'
     dcrName: '${resourceSuffix}-dcr'
     location: location
-    workspaceResourceId: logAnalyticsWorkspaceId
+    workspaceResourceId: resolvedWorkspaceId
     keyVaultName: '${resourceSuffix}-kv'
     tags: tags
   }
@@ -139,7 +152,7 @@ module functionApp 'modules/functionapp.bicep' = {
     keyVaultUri: keyVault.outputs.uri
     keyVaultName: '${resourceSuffix}-kv'
     appConfigEndpoint: appConfig.outputs.endpoint
-    sbConnectionSecretUri: serviceBus.outputs.connectionSecretUri
+    sbNamespaceFqdn: serviceBus.outputs.namespaceFqdn
     sbQueueName: 'do-telemetry'
     dceEndpoint: dataCollection.outputs.dceEndpoint
     dcrSecretUri: dataCollection.outputs.dcrSecretUri
@@ -234,6 +247,20 @@ resource storageFileShareRole 'Microsoft.Authorization/roleAssignments@2022-04-0
   }
 }
 
+// Function App → Azure Service Bus Data Owner (send + receive + manage)
+resource sbDataOwnerRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, '${resourceSuffix}-func', 'ServiceBusDataOwner')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '090c5cfd-751d-490a-894a-3ce6f1109419' // Azure Service Bus Data Owner
+    )
+    principalId: functionApp.outputs.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Function App → Key Vault Secrets User
 resource kvSecretsUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(resourceGroup().id, '${resourceSuffix}-func', 'KVSecretsUser')
@@ -306,3 +333,4 @@ output storageName string = storage.outputs.name
 output dceEndpoint string = dataCollection.outputs.dceEndpoint
 output dcrImmutableId string = dataCollection.outputs.dcrImmutableId
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
+output logAnalyticsWorkspaceId string = resolvedWorkspaceId

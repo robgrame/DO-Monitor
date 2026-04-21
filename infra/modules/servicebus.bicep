@@ -11,9 +11,6 @@ param location string = resourceGroup().location
 @description('Queue name')
 param queueName string = 'do-telemetry'
 
-@description('Key Vault name to store connection string')
-param keyVaultName string
-
 @description('Tags')
 param tags object = {}
 
@@ -28,6 +25,7 @@ resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   properties: {
     minimumTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
+    disableLocalAuth: true
   }
 }
 
@@ -43,30 +41,7 @@ resource queue 'Microsoft.ServiceBus/namespaces/queues@2022-10-01-preview' = {
   }
 }
 
-// Auth rules
-resource listenSendRule 'Microsoft.ServiceBus/namespaces/AuthorizationRules@2022-10-01-preview' = {
-  parent: serviceBus
-  name: 'DOMonitorListenSend'
-  properties: {
-    rights: ['Listen', 'Send']
-  }
-}
-
-// Store connection string in Key Vault
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: keyVaultName
-}
-
-resource sbConnectionSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'ServiceBusConnection'
-  properties: {
-    value: listenSendRule.listKeys().primaryConnectionString
-    contentType: 'Service Bus connection string for DO-Monitor'
-  }
-}
-
 output id string = serviceBus.id
 output name string = serviceBus.name
 output queueName string = queue.name
-output connectionSecretUri string = sbConnectionSecret.properties.secretUri
+output namespaceFqdn string = '${serviceBus.name}.servicebus.windows.net'

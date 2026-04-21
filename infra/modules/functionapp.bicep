@@ -23,8 +23,8 @@ param keyVaultName string
 @description('App Configuration endpoint')
 param appConfigEndpoint string
 
-@description('Service Bus connection string Key Vault secret URI')
-param sbConnectionSecretUri string
+@description('Service Bus namespace FQDN (for RBAC-based auth)')
+param sbNamespaceFqdn string
 
 @description('Service Bus queue name')
 param sbQueueName string
@@ -91,10 +91,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'dotnet-isolated'
         }
-        // Key Vault references for secrets
+        // Service Bus via Managed Identity (RBAC)
         {
-          name: 'ServiceBusConnection'
-          value: '@Microsoft.KeyVault(SecretUri=${sbConnectionSecretUri})'
+          name: 'ServiceBusConnection__fullyQualifiedNamespace'
+          value: sbNamespaceFqdn
         }
         {
           name: 'ServiceBusQueueName'

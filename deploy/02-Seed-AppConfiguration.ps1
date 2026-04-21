@@ -53,19 +53,13 @@ $ConfigEntries = @(
     # Certificate Validation — disable by default, enable after configuring CA chains
     @{ Key = "DO-Monitor:CertificateValidation:DisableValidation"; Value = "true";   Label = "prod"; ContentType = "" }
 
-    # Trusted CA Chain 1 (placeholder — update with actual thumbprints)
-    @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:0:Name";                Value = "Primary CA";              Label = "prod"; ContentType = "" }
-    @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:0:RootCaThumbprint";    Value = "<ROOT-CA-THUMBPRINT>";    Label = "prod"; ContentType = "" }
-    @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:0:SubCaThumbprints:0";  Value = "<SUB-CA-1-THUMBPRINT>";   Label = "prod"; ContentType = "" }
-
-    # Trusted CA Chain 2 (placeholder — add more chains as needed)
-    # @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:1:Name";              Value = "Secondary CA";            Label = "prod"; ContentType = "" }
-    # @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:1:RootCaThumbprint";  Value = "<ROOT-CA-2-THUMBPRINT>";  Label = "prod"; ContentType = "" }
-    # @{ Key = "DO-Monitor:CertificateValidation:TrustedChains:1:SubCaThumbprints:0"; Value = "<SUB-CA-2-THUMBPRINT>"; Label = "prod"; ContentType = "" }
+    # CA chain placeholders are NOT seeded here.
+    # Use Manage-TrustedCAChains.ps1 to add actual CA chains after deployment.
 )
 
 Write-Host "`n[2/2] Writing configuration entries..." -ForegroundColor Yellow
 
+$FailCount = 0
 foreach ($Entry in $ConfigEntries) {
     Write-Host "  Setting: $($Entry.Key) = $($Entry.Value)" -ForegroundColor Gray
     az appconfig kv set `
@@ -78,6 +72,7 @@ foreach ($Entry in $ConfigEntries) {
 
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "  Failed to set $($Entry.Key)"
+        $FailCount++
     }
 }
 
@@ -85,6 +80,8 @@ Write-Host "`n========================================" -ForegroundColor Green
 Write-Host " App Configuration seeded successfully!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Total entries: $($ConfigEntries.Count)" -ForegroundColor White
+Write-Host "  Total entries: $($ConfigEntries.Count) (failed: $FailCount)" -ForegroundColor White
 Write-Host "  App Config:    $AppConfigName" -ForegroundColor White
+Write-Host ""
+Write-Host "  Next: Use Manage-TrustedCAChains.ps1 to add CA chains for cert validation." -ForegroundColor Yellow
 Write-Host ""
