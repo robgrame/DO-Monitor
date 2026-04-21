@@ -1,0 +1,1629 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "3988885767412267965"
+    }
+  },
+  "parameters": {
+    "baseName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 12,
+      "metadata": {
+        "description": "Base name for all resources (lowercase, no special chars)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for deployment"
+      }
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Existing Log Analytics Workspace resource ID. If empty, a new workspace is created."
+      }
+    },
+    "environment": {
+      "type": "string",
+      "defaultValue": "prod",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment tag"
+      }
+    },
+    "deployerPrincipalId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Deployer principal ID (for initial Key Vault access)"
+      }
+    }
+  },
+  "variables": {
+    "resourceSuffix": "[format('{0}-{1}', parameters('baseName'), parameters('environment'))]",
+    "storageName": "[replace(toLower(format('{0}{1}st', parameters('baseName'), parameters('environment'))), '-', '')]",
+    "createWorkspace": "[empty(parameters('logAnalyticsWorkspaceId'))]",
+    "resolvedWorkspaceRg": "[if(variables('createWorkspace'), resourceGroup().name, split(parameters('logAnalyticsWorkspaceId'), '/')[4])]",
+    "tags": {
+      "Project": "DO-Monitor",
+      "Environment": "[parameters('environment')]",
+      "ManagedBy": "Bicep"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'StorageBlobDataOwner')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'StorageQueueDataContributor')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'StorageAccountContributor')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'StorageTableDataContributor')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'StorageFileShareContributor')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'ServiceBusDataOwner')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '090c5cfd-751d-490a-894a-3ce6f1109419')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'KVSecretsUser')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'AppConfigReader')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '516239f1-63e1-4d78-a4de-a74fb236a071')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, format('{0}-func', variables('resourceSuffix')), 'MonitoringPublisher')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-functionapp')]"
+      ]
+    },
+    {
+      "condition": "[not(equals(parameters('deployerPrincipalId'), ''))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceGroup().id, parameters('deployerPrincipalId'), 'KVSecretsOfficer')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')]",
+        "principalId": "[parameters('deployerPrincipalId')]",
+        "principalType": "User"
+      }
+    },
+    {
+      "condition": "[variables('createWorkspace')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-loganalytics",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-law', variables('resourceSuffix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "retentionInDays": {
+            "value": 90
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "17169531573254324462"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Workspace name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "retentionInDays": {
+              "type": "int",
+              "defaultValue": 90,
+              "metadata": {
+                "description": "Retention in days"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": "[parameters('retentionInDays')]",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "resourceGroup": {
+              "type": "string",
+              "value": "[resourceGroup().name]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-monitoring",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "baseName": {
+            "value": "[variables('resourceSuffix')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workspaceResourceId": "[if(variables('createWorkspace'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-loganalytics'), '2025-04-01').outputs.id.value), createObject('value', parameters('logAnalyticsWorkspaceId')))]",
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "4168096478523970619"
+            }
+          },
+          "parameters": {
+            "baseName": {
+              "type": "string",
+              "metadata": {
+                "description": "Base name for resources"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "workspaceResourceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[format('{0}-appi', parameters('baseName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[parameters('workspaceResourceId')]",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled",
+                "SamplingPercentage": 50
+              }
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2023-12-01",
+              "name": "[format('{0}-plan', parameters('baseName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "EP1",
+                "tier": "ElasticPremium",
+                "family": "EP"
+              },
+              "kind": "elastic",
+              "properties": {
+                "maximumElasticWorkerCount": 20,
+                "reserved": false
+              }
+            }
+          ],
+          "outputs": {
+            "appInsightsId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/components', format('{0}-appi', parameters('baseName')))]"
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-appi', parameters('baseName'))), '2020-02-02').ConnectionString]"
+            },
+            "appServicePlanId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('baseName')))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-loganalytics')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-storage",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[variables('storageName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "10848983167224315126"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name (3-24 chars, lowercase, no dashes)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": false,
+                "defaultToOAuthAuthentication": true
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-keyvault",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-kv', variables('resourceSuffix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "8450944485524015512"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tenantId": {
+              "type": "string",
+              "defaultValue": "[subscription().tenantId]",
+              "metadata": {
+                "description": "Tenant ID"
+              }
+            },
+            "secretsUserPrincipalIds": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Principal IDs to grant Key Vault Secrets User role"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "[parameters('tenantId')]",
+                "enableRbacAuthorization": true,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 30,
+                "enablePurgeProtection": true,
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                }
+              }
+            },
+            {
+              "copy": {
+                "name": "secretsUserRole",
+                "count": "[length(parameters('secretsUserPrincipalIds'))]",
+                "mode": "serial",
+                "batchSize": 1
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('name')), parameters('secretsUserPrincipalIds')[copyIndex()], '4633458b-17de-408a-b874-0445c86b69e6')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+                "principalId": "[parameters('secretsUserPrincipalIds')[copyIndex()]]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "uri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('name')), '2023-07-01').vaultUri]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-servicebus",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-sbus', variables('resourceSuffix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "queueName": {
+            "value": "do-telemetry"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "12142991385890150253"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Service Bus namespace name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "queueName": {
+              "type": "string",
+              "defaultValue": "do-telemetry",
+              "metadata": {
+                "description": "Queue name"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ServiceBus/namespaces",
+              "apiVersion": "2022-10-01-preview",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard",
+                "tier": "Standard"
+              },
+              "properties": {
+                "minimumTlsVersion": "1.2",
+                "publicNetworkAccess": "Enabled",
+                "disableLocalAuth": true
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/queues",
+              "apiVersion": "2022-10-01-preview",
+              "name": "[format('{0}/{1}', parameters('name'), parameters('queueName'))]",
+              "properties": {
+                "maxDeliveryCount": 10,
+                "lockDuration": "PT5M",
+                "defaultMessageTimeToLive": "P7D",
+                "deadLetteringOnMessageExpiration": true,
+                "maxSizeInMegabytes": 1024
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ServiceBus/namespaces', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "queueName": {
+              "type": "string",
+              "value": "[parameters('queueName')]"
+            },
+            "namespaceFqdn": {
+              "type": "string",
+              "value": "[format('{0}.servicebus.windows.net', parameters('name'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-customtable",
+      "resourceGroup": "[variables('resolvedWorkspaceRg')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "workspaceName": "[if(variables('createWorkspace'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-loganalytics'), '2025-04-01').outputs.name.value), createObject('value', last(split(parameters('logAnalyticsWorkspaceId'), '/'))))]",
+          "tableName": {
+            "value": "DOStatus_CL"
+          },
+          "retentionInDays": {
+            "value": 90
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "2325755251891952983"
+            }
+          },
+          "parameters": {
+            "workspaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace name"
+              }
+            },
+            "tableName": {
+              "type": "string",
+              "defaultValue": "DOStatus_CL",
+              "metadata": {
+                "description": "Custom table name (without _CL suffix in the resource name)"
+              }
+            },
+            "retentionInDays": {
+              "type": "int",
+              "defaultValue": 90,
+              "metadata": {
+                "description": "Retention in days"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}/{1}', parameters('workspaceName'), parameters('tableName'))]",
+              "properties": {
+                "plan": "Analytics",
+                "retentionInDays": "[parameters('retentionInDays')]",
+                "schema": {
+                  "name": "[parameters('tableName')]",
+                  "columns": [
+                    {
+                      "name": "TimeGenerated",
+                      "type": "dateTime",
+                      "description": "Collection timestamp (UTC)"
+                    },
+                    {
+                      "name": "DeviceName",
+                      "type": "string",
+                      "description": "Device hostname"
+                    },
+                    {
+                      "name": "OSVersion",
+                      "type": "string",
+                      "description": "Windows OS version"
+                    },
+                    {
+                      "name": "SerialNumber",
+                      "type": "string",
+                      "description": "Device serial number"
+                    },
+                    {
+                      "name": "Domain",
+                      "type": "string",
+                      "description": "AD domain"
+                    },
+                    {
+                      "name": "FileId",
+                      "type": "string",
+                      "description": "DO job file ID"
+                    },
+                    {
+                      "name": "FileName",
+                      "type": "string",
+                      "description": "Downloaded file name"
+                    },
+                    {
+                      "name": "FileSize_Bytes",
+                      "type": "long",
+                      "description": "File size in bytes"
+                    },
+                    {
+                      "name": "Status",
+                      "type": "string",
+                      "description": "Job status"
+                    },
+                    {
+                      "name": "Priority",
+                      "type": "string",
+                      "description": "Download priority"
+                    },
+                    {
+                      "name": "BytesFromPeers",
+                      "type": "long",
+                      "description": "Bytes from all peers"
+                    },
+                    {
+                      "name": "BytesFromHttp",
+                      "type": "long",
+                      "description": "Bytes from HTTP/CDN"
+                    },
+                    {
+                      "name": "BytesFromCacheServer",
+                      "type": "long",
+                      "description": "Bytes from Connected Cache"
+                    },
+                    {
+                      "name": "BytesFromLanPeers",
+                      "type": "long",
+                      "description": "Bytes from LAN peers"
+                    },
+                    {
+                      "name": "BytesFromGroupPeers",
+                      "type": "long",
+                      "description": "Bytes from group peers"
+                    },
+                    {
+                      "name": "BytesFromIntPeers",
+                      "type": "long",
+                      "description": "Bytes from Internet peers"
+                    },
+                    {
+                      "name": "TotalBytesDownloaded",
+                      "type": "long",
+                      "description": "Total bytes downloaded"
+                    },
+                    {
+                      "name": "PercentPeerCaching",
+                      "type": "real",
+                      "description": "Peer caching percentage"
+                    },
+                    {
+                      "name": "DownloadMode",
+                      "type": "string",
+                      "description": "Configured DO download mode"
+                    },
+                    {
+                      "name": "SourceURL",
+                      "type": "string",
+                      "description": "Download source URL"
+                    },
+                    {
+                      "name": "IsPinned",
+                      "type": "boolean",
+                      "description": "Content pinned in cache"
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "tableName": {
+              "type": "string",
+              "value": "[parameters('tableName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-loganalytics')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-datacollection",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "dceName": {
+            "value": "[format('{0}-dce', variables('resourceSuffix'))]"
+          },
+          "dcrName": {
+            "value": "[format('{0}-dcr', variables('resourceSuffix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workspaceResourceId": "[if(variables('createWorkspace'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'deploy-loganalytics'), '2025-04-01').outputs.id.value), createObject('value', parameters('logAnalyticsWorkspaceId')))]",
+          "keyVaultName": {
+            "value": "[format('{0}-kv', variables('resourceSuffix'))]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "8485988781950249102"
+            }
+          },
+          "parameters": {
+            "dceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Data Collection Endpoint name"
+              }
+            },
+            "dcrName": {
+              "type": "string",
+              "metadata": {
+                "description": "Data Collection Rule name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "workspaceResourceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name to store DCR immutable ID"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/dataCollectionEndpoints",
+              "apiVersion": "2022-06-01",
+              "name": "[parameters('dceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "networkAcls": {
+                  "publicNetworkAccess": "Enabled"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Insights/dataCollectionRules",
+              "apiVersion": "2022-06-01",
+              "name": "[parameters('dcrName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "dataCollectionEndpointId": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dceName'))]",
+                "streamDeclarations": {
+                  "Custom-DOStatus_CL": {
+                    "columns": [
+                      {
+                        "name": "TimeGenerated",
+                        "type": "datetime"
+                      },
+                      {
+                        "name": "DeviceName",
+                        "type": "string"
+                      },
+                      {
+                        "name": "OSVersion",
+                        "type": "string"
+                      },
+                      {
+                        "name": "SerialNumber",
+                        "type": "string"
+                      },
+                      {
+                        "name": "Domain",
+                        "type": "string"
+                      },
+                      {
+                        "name": "FileId",
+                        "type": "string"
+                      },
+                      {
+                        "name": "FileName",
+                        "type": "string"
+                      },
+                      {
+                        "name": "FileSize_Bytes",
+                        "type": "long"
+                      },
+                      {
+                        "name": "Status",
+                        "type": "string"
+                      },
+                      {
+                        "name": "Priority",
+                        "type": "string"
+                      },
+                      {
+                        "name": "BytesFromPeers",
+                        "type": "long"
+                      },
+                      {
+                        "name": "BytesFromHttp",
+                        "type": "long"
+                      },
+                      {
+                        "name": "BytesFromCacheServer",
+                        "type": "long"
+                      },
+                      {
+                        "name": "BytesFromLanPeers",
+                        "type": "long"
+                      },
+                      {
+                        "name": "BytesFromGroupPeers",
+                        "type": "long"
+                      },
+                      {
+                        "name": "BytesFromIntPeers",
+                        "type": "long"
+                      },
+                      {
+                        "name": "TotalBytesDownloaded",
+                        "type": "long"
+                      },
+                      {
+                        "name": "PercentPeerCaching",
+                        "type": "real"
+                      },
+                      {
+                        "name": "DownloadMode",
+                        "type": "string"
+                      },
+                      {
+                        "name": "SourceURL",
+                        "type": "string"
+                      },
+                      {
+                        "name": "IsPinned",
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                },
+                "destinations": {
+                  "logAnalytics": [
+                    {
+                      "workspaceResourceId": "[parameters('workspaceResourceId')]",
+                      "name": "logAnalyticsDest"
+                    }
+                  ]
+                },
+                "dataFlows": [
+                  {
+                    "streams": [
+                      "Custom-DOStatus_CL"
+                    ],
+                    "destinations": [
+                      "logAnalyticsDest"
+                    ],
+                    "transformKql": "source",
+                    "outputStream": "Custom-DOStatus_CL"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dceName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'DcrImmutableId')]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName')), '2022-06-01').immutableId]",
+                "contentType": "DCR Immutable ID for DO-Monitor"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "dceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dceName'))]"
+            },
+            "dceName": {
+              "type": "string",
+              "value": "[parameters('dceName')]"
+            },
+            "dceEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dceName')), '2022-06-01').logsIngestion.endpoint]"
+            },
+            "dcrId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+            },
+            "dcrName": {
+              "type": "string",
+              "value": "[parameters('dcrName')]"
+            },
+            "dcrImmutableId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName')), '2022-06-01').immutableId]"
+            },
+            "dcrSecretUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'DcrImmutableId'), '2023-07-01').secretUri]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('resolvedWorkspaceRg')), 'Microsoft.Resources/deployments', 'deploy-customtable')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-keyvault')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-loganalytics')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-functionapp",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-func', variables('resourceSuffix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "appServicePlanId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-monitoring'), '2025-04-01').outputs.appServicePlanId.value]"
+          },
+          "storageAccountName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-storage'), '2025-04-01').outputs.name.value]"
+          },
+          "keyVaultUri": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-keyvault'), '2025-04-01').outputs.uri.value]"
+          },
+          "keyVaultName": {
+            "value": "[format('{0}-kv', variables('resourceSuffix'))]"
+          },
+          "appConfigEndpoint": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-appconfig'), '2025-04-01').outputs.endpoint.value]"
+          },
+          "sbNamespaceFqdn": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-servicebus'), '2025-04-01').outputs.namespaceFqdn.value]"
+          },
+          "sbQueueName": {
+            "value": "do-telemetry"
+          },
+          "dceEndpoint": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-datacollection'), '2025-04-01').outputs.dceEndpoint.value]"
+          },
+          "dcrSecretUri": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-datacollection'), '2025-04-01').outputs.dcrSecretUri.value]"
+          },
+          "appInsightsConnectionString": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "18144127360982797782"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "appServicePlanId": {
+              "type": "string",
+              "metadata": {
+                "description": "App Service Plan ID"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage Account name (for RBAC-based auth)"
+              }
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "appConfigEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "App Configuration endpoint"
+              }
+            },
+            "sbNamespaceFqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "Service Bus namespace FQDN (for RBAC-based auth)"
+              }
+            },
+            "sbQueueName": {
+              "type": "string",
+              "metadata": {
+                "description": "Service Bus queue name"
+              }
+            },
+            "dceEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "DCE endpoint"
+              }
+            },
+            "dcrSecretUri": {
+              "type": "string",
+              "metadata": {
+                "description": "DCR Immutable ID Key Vault secret URI"
+              }
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights connection string"
+              }
+            },
+            "clientCertThumbprint": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Client certificate thumbprint (stored in Key Vault for reference)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2023-12-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "kind": "functionapp",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "serverFarmId": "[parameters('appServicePlanId')]",
+                "httpsOnly": true,
+                "clientCertEnabled": true,
+                "clientCertMode": "Required",
+                "clientCertExclusionPaths": "/api/health",
+                "siteConfig": {
+                  "netFrameworkVersion": "v10.0",
+                  "ftpsState": "Disabled",
+                  "minTlsVersion": "1.2",
+                  "http20Enabled": true,
+                  "use32BitWorkerProcess": false,
+                  "appSettings": [
+                    {
+                      "name": "AzureWebJobsStorage__accountName",
+                      "value": "[parameters('storageAccountName')]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage__blobServiceUri",
+                      "value": "[format('https://{0}.blob.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage__queueServiceUri",
+                      "value": "[format('https://{0}.queue.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage__tableServiceUri",
+                      "value": "[format('https://{0}.table.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "dotnet-isolated"
+                    },
+                    {
+                      "name": "ServiceBusConnection__fullyQualifiedNamespace",
+                      "value": "[parameters('sbNamespaceFqdn')]"
+                    },
+                    {
+                      "name": "ServiceBusQueueName",
+                      "value": "[parameters('sbQueueName')]"
+                    },
+                    {
+                      "name": "LogAnalyticsDCE",
+                      "value": "[parameters('dceEndpoint')]"
+                    },
+                    {
+                      "name": "LogAnalyticsDCR_ImmutableId",
+                      "value": "[format('@Microsoft.KeyVault(SecretUri={0})', parameters('dcrSecretUri'))]"
+                    },
+                    {
+                      "name": "LogAnalyticsStreamName",
+                      "value": "Custom-DOStatus_CL"
+                    },
+                    {
+                      "name": "AppConfigEndpoint",
+                      "value": "[parameters('appConfigEndpoint')]"
+                    },
+                    {
+                      "name": "KeyVaultUri",
+                      "value": "[parameters('keyVaultUri')]"
+                    },
+                    {
+                      "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                      "value": "[parameters('appInsightsConnectionString')]"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "condition": "[not(equals(parameters('clientCertThumbprint'), ''))]",
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'ClientCertThumbprint')]",
+              "properties": {
+                "value": "[parameters('clientCertThumbprint')]",
+                "contentType": "Client certificate thumbprint for DO-Monitor clients"
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "defaultHostName": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('name')), '2023-12-01').defaultHostName]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('name')), '2023-12-01', 'full').identity.principalId]"
+            },
+            "functionUrl": {
+              "type": "string",
+              "value": "[format('https://{0}/api/DOIngest', reference(resourceId('Microsoft.Web/sites', parameters('name')), '2023-12-01').defaultHostName)]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-appconfig')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-datacollection')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-keyvault')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-monitoring')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-servicebus')]",
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-storage')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-appconfig",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-appconfig', variables('resourceSuffix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "16837654884949669716"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "App Configuration name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "dataReaderPrincipalIds": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Principal IDs to grant App Configuration Data Reader role"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.AppConfiguration/configurationStores",
+              "apiVersion": "2023-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "free"
+              },
+              "properties": {
+                "publicNetworkAccess": "Enabled",
+                "disableLocalAuth": false
+              }
+            },
+            {
+              "copy": {
+                "name": "dataReaderRole",
+                "count": "[length(parameters('dataReaderPrincipalIds'))]",
+                "mode": "serial",
+                "batchSize": 1
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('name'))]",
+              "name": "[guid(resourceId('Microsoft.AppConfiguration/configurationStores', parameters('name')), parameters('dataReaderPrincipalIds')[copyIndex()], '516239f1-63e1-4d78-a4de-a74fb236a071')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '516239f1-63e1-4d78-a4de-a74fb236a071')]",
+                "principalId": "[parameters('dataReaderPrincipalIds')[copyIndex()]]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.AppConfiguration/configurationStores', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "endpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.AppConfiguration/configurationStores', parameters('name')), '2023-03-01').endpoint]"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "functionAppName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.name.value]"
+    },
+    "functionAppUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.functionUrl.value]"
+    },
+    "functionAppDefaultHostName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.defaultHostName.value]"
+    },
+    "functionAppPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-functionapp'), '2025-04-01').outputs.principalId.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-keyvault'), '2025-04-01').outputs.name.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-keyvault'), '2025-04-01').outputs.uri.value]"
+    },
+    "appConfigName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-appconfig'), '2025-04-01').outputs.name.value]"
+    },
+    "appConfigEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-appconfig'), '2025-04-01').outputs.endpoint.value]"
+    },
+    "serviceBusName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-servicebus'), '2025-04-01').outputs.name.value]"
+    },
+    "storageName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-storage'), '2025-04-01').outputs.name.value]"
+    },
+    "dceEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-datacollection'), '2025-04-01').outputs.dceEndpoint.value]"
+    },
+    "dcrImmutableId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-datacollection'), '2025-04-01').outputs.dcrImmutableId.value]"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "value": "[if(variables('createWorkspace'), reference(resourceId('Microsoft.Resources/deployments', 'deploy-loganalytics'), '2025-04-01').outputs.id.value, parameters('logAnalyticsWorkspaceId'))]"
+    }
+  }
+}

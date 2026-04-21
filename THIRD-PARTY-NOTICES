@@ -1,0 +1,88 @@
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+
+DO-Monitor incorporates third-party components listed below.
+Each component is licensed under its respective license terms.
+
+=============================================================================
+
+1. Azure.Identity (v1.13.2)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/azure-sdk-for-net
+
+2. Azure.Monitor.Ingestion (v1.2.0)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/azure-sdk-for-net
+
+3. Microsoft.ApplicationInsights.WorkerService (v2.23.0)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/microsoft/ApplicationInsights-dotnet
+
+4. Microsoft.Azure.AppConfiguration.Functions.Worker (v8.5.0)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/AppConfiguration-DotnetProvider
+
+5. Microsoft.Azure.Functions.Worker (v2.0.0)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/azure-functions-dotnet-worker
+
+6. Microsoft.Azure.Functions.Worker.ApplicationInsights (v2.0.0)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/azure-functions-dotnet-worker
+
+7. Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore (v2.0.2)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/azure-functions-dotnet-worker
+
+8. Microsoft.Azure.Functions.Worker.Extensions.ServiceBus (v5.22.2)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/azure-functions-dotnet-worker
+
+9. Microsoft.Azure.Functions.Worker.Sdk (v2.0.7)
+   License: MIT
+   Copyright (c) Microsoft Corporation
+   https://licenses.nuget.org/MIT
+   https://github.com/Azure/azure-functions-dotnet-worker
+
+10. Microsoft.Extensions.Configuration.AzureAppConfiguration (v8.5.0)
+    License: MIT
+    Copyright (c) Microsoft Corporation
+    https://licenses.nuget.org/MIT
+    https://github.com/Azure/AppConfiguration-DotnetProvider
+
+=============================================================================
+
+All third-party components listed above are licensed under the MIT License,
+which permits use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the software without restriction.
+
+The MIT License text is as follows:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
