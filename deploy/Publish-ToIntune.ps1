@@ -83,7 +83,9 @@ $AppBody = @{
         runAsAccount               = "system"
         deviceRestartBehavior      = "suppress"
     }
-    minimumSupportedWindowsRelease = "v10_21H2"
+    minimumSupportedOperatingSystem = @{
+        v10_21H2 = $true
+    }
     applicableArchitectures        = "x64"
     setupFilePath                  = $SetupFile
     detectionRules                 = @(
