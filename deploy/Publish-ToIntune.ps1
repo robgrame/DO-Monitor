@@ -122,13 +122,22 @@ $ContentVersion = Invoke-MgGraphRequest -Method POST `
 Write-Host "  Content version: $($ContentVersion.id)" -ForegroundColor Gray
 
 # Create content file entry
+# Extract the encrypted content file from the .intunewin zip
+Write-Host "  Extracting encrypted content..." -ForegroundColor Gray
+$TempDir = Join-Path $env:TEMP "DO-Monitor-Upload"
+if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
+[System.IO.Compression.ZipFile]::ExtractToDirectory((Resolve-Path $PackagePath).Path, $TempDir)
+$EncryptedFilePath = Join-Path $TempDir "IntuneWinPackage\Contents\IntunePackage.intunewin"
+$EncryptedFileSize = (Get-Item $EncryptedFilePath).Length
+$UnencryptedSize = [long]$MetadataXml.ApplicationInfo.UnencryptedContentSize
+
 $ContentFile = Invoke-MgGraphRequest -Method POST `
     -Uri "https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/$($App.id)/microsoft.graph.win32LobApp/contentVersions/$($ContentVersion.id)/files" `
     -Body @{
         "@odata.type" = "#microsoft.graph.mobileAppContentFile"
         name          = [System.IO.Path]::GetFileName($PackagePath)
-        size          = (Get-Item $PackagePath).Length
-        sizeEncrypted = (Get-Item $PackagePath).Length
+        size          = $UnencryptedSize
+        sizeEncrypted = $EncryptedFileSize
     }
 Write-Host "  Content file: $($ContentFile.id)" -ForegroundColor Gray
 
@@ -149,9 +158,9 @@ for ($i = 0; $i -lt $MaxRetries; $i++) {
     }
 }
 
-# Upload file to Azure Storage (direct, no Graph auth needed)
+# Upload the encrypted content file to Azure Storage
 $UploadUri = $FileStatus.azureStorageUri
-$FileBytes = [System.IO.File]::ReadAllBytes($PackagePath)
+$FileBytes = [System.IO.File]::ReadAllBytes($EncryptedFilePath)
 
 $BlockId = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("0000"))
 Invoke-RestMethod -Uri "$UploadUri&comp=block&blockid=$BlockId" -Method PUT -Body $FileBytes `
@@ -233,3 +242,6 @@ Write-Host "  Assignment:   All Devices (Required)" -ForegroundColor White
 Write-Host ""
 
 $App.id | Out-File -FilePath (Join-Path $PSScriptRoot "intune-app-id.txt") -Encoding utf8
+
+# Cleanup temp
+Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
