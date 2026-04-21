@@ -76,6 +76,7 @@ $AppBody = @{
     description                    = "Delivery Optimization telemetry collector v$Version. Collects DO job details, performance stats, and applied policies from Windows clients."
     publisher                      = "IT Operations"
     displayVersion                 = $Version
+    fileName                       = [System.IO.Path]::GetFileName($PackagePath)
     installCommandLine             = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File Install-DOMonitor.ps1"
     uninstallCommandLine           = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File Uninstall-DOMonitor.ps1"
     installExperience              = @{
