@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    DO-Monitor — Uninstaller (v2.5.0).
+    DO-Monitor — Uninstaller (v2.6.0).
 #>
 $ErrorActionPreference = "SilentlyContinue"
 $InstallDir = "$env:ProgramData\DO-Monitor"

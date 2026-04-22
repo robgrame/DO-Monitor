@@ -154,8 +154,9 @@ try {
     # === CREATE SCHEDULED TASK ===
     Unregister-ScheduledTask -TaskName `$TaskName -Confirm:`$false -ErrorAction SilentlyContinue
 
+    `$ScriptPath = "`$InstallDir\Detect-DOStatus.ps1"
     `$Action = New-ScheduledTaskAction -Execute "powershell.exe" ``
-        -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"`$InstallDir\Detect-DOStatus.ps1`""
+        -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File ```"`$ScriptPath```""
 
     `$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Hours 6)
 
