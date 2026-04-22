@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    DO-Monitor — Detection script for Intune Win32 app (v2.3.9).
+    DO-Monitor — Detection script for Intune Win32 app (v2.5.0).
 #>
 $InstallDir = "$env:ProgramData\DO-Monitor"
 $TaskName = "DO-Monitor Collector"
-$RequiredVersion = "2.3.9"
+$RequiredVersion = "2.5.0"
 
 if (-not (Test-Path "$InstallDir\Detect-DOStatus.ps1")) { Write-Host "Not installed"; exit 1 }
 

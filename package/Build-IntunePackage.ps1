@@ -1,19 +1,24 @@
 <#
 .SYNOPSIS
-    Builds the DO-Monitor IntuneWin package with embedded scripts.
+    Builds the DO-Monitor IntuneWin package with embedded scripts and certificate.
 .DESCRIPTION
-    Generates a self-contained Install-DOMonitor.ps1 that embeds the collector
-    script as a base64 payload. No external file dependencies at runtime.
-    Then packages everything into an .intunewin file.
+    Generates a self-contained Install-DOMonitor.ps1 that embeds:
+    - The DO collector script (base64)
+    - The client certificate PFX (base64) — installed to LocalMachine\My
+    - The Root CA certificate CER (base64) — installed to LocalMachine\Root
+    No external file dependencies at runtime.
 .EXAMPLE
-    .\Build-IntunePackage.ps1
-    .\Build-IntunePackage.ps1 -CertThumbprint "A1B2C3..."
+    .\Build-IntunePackage.ps1 -ClientPfxPath "certs\client.pfx" -ClientPfxPassword "P@ss" -RootCACerPath "certs\rootca.cer"
+    .\Build-IntunePackage.ps1 -CertThumbprint "A1B2..." -ClientPfxPath "certs\client.pfx" -ClientPfxPassword "P@ss"
 #>
 
 [CmdletBinding()]
 param(
     [string]$CertThumbprint,
-    [string]$FunctionUrl
+    [string]$FunctionUrl,
+    [string]$ClientPfxPath,
+    [string]$ClientPfxPassword,
+    [string]$RootCACerPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,6 +61,36 @@ if ($CertThumbprint) {
 # Encode collector script as base64
 $CollectorBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($CollectorScript))
 
+# Encode certificates as base64 (if provided)
+$ClientPfxBase64 = ""
+$RootCABase64 = ""
+$PfxPasswordEscaped = ""
+
+if ($ClientPfxPath -and (Test-Path $ClientPfxPath)) {
+    $ClientPfxBase64 = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes((Resolve-Path $ClientPfxPath).Path))
+    $PfxPasswordEscaped = if ($ClientPfxPassword) { $ClientPfxPassword } else { "" }
+    Write-Host "  Client PFX embedded: $ClientPfxPath" -ForegroundColor Green
+    
+    # Auto-detect thumbprint from PFX if not provided
+    if (-not $CertThumbprint -and $ClientPfxPassword) {
+        $pfxPwd = ConvertTo-SecureString -String $ClientPfxPassword -Force -AsPlainText
+        $tempCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+            (Resolve-Path $ClientPfxPath).Path, $pfxPwd,
+            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::DefaultKeySet)
+        $CertThumbprint = $tempCert.Thumbprint
+        $tempCert.Dispose()
+        # Update collector script with auto-detected thumbprint
+        $CollectorScript = $CollectorScript -replace '<YOUR-CLIENT-CERT-THUMBPRINT>', $CertThumbprint
+        $CollectorBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($CollectorScript))
+        Write-Host "  Cert thumbprint auto-detected: $CertThumbprint" -ForegroundColor Green
+    }
+}
+
+if ($RootCACerPath -and (Test-Path $RootCACerPath)) {
+    $RootCABase64 = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes((Resolve-Path $RootCACerPath).Path))
+    Write-Host "  Root CA embedded: $RootCACerPath" -ForegroundColor Green
+}
+
 # Version
 $Version = (Get-Content (Join-Path $RepoRoot "VERSION") -Raw).Trim()
 
@@ -64,20 +99,49 @@ $InstallScript = @"
 <#
 .SYNOPSIS
     DO-Monitor — Self-contained installer (v$Version).
-    All dependent scripts are embedded. No external files required.
+    All dependent scripts and certificates are embedded.
 #>
 `$ErrorActionPreference = "Stop"
 `$InstallDir = "`$env:ProgramData\DO-Monitor"
 `$TaskName = "DO-Monitor Collector"
 `$Version = "$Version"
 
-# === EMBEDDED COLLECTOR SCRIPT (base64) ===
+# === EMBEDDED PAYLOADS (base64) ===
 `$CollectorBase64 = "$CollectorBase64"
+`$ClientPfxBase64 = "$ClientPfxBase64"
+`$RootCABase64 = "$RootCABase64"
+`$PfxPassword = "$PfxPasswordEscaped"
 
 try {
     # === CREATE INSTALL DIRECTORY ===
     if (-not (Test-Path `$InstallDir)) {
         New-Item -ItemType Directory -Path `$InstallDir -Force | Out-Null
+    }
+
+    # === INSTALL ROOT CA (if embedded) ===
+    if (`$RootCABase64) {
+        `$rootBytes = [Convert]::FromBase64String(`$RootCABase64)
+        `$rootCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(`$rootBytes)
+        `$rootStore = [System.Security.Cryptography.X509Certificates.X509Store]::new("Root", "LocalMachine")
+        `$rootStore.Open("ReadWrite")
+        `$rootStore.Add(`$rootCert)
+        `$rootStore.Close()
+        Write-Host "Root CA installed: `$(`$rootCert.Subject) [`$(`$rootCert.Thumbprint)]"
+    }
+
+    # === INSTALL CLIENT CERTIFICATE (if embedded) ===
+    if (`$ClientPfxBase64) {
+        `$pfxBytes = [Convert]::FromBase64String(`$ClientPfxBase64)
+        `$pfxPwd = ConvertTo-SecureString -String `$PfxPassword -Force -AsPlainText
+        `$clientCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+            `$pfxBytes, `$pfxPwd,
+            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::MachineKeySet -bor
+            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet)
+        `$certStore = [System.Security.Cryptography.X509Certificates.X509Store]::new("My", "LocalMachine")
+        `$certStore.Open("ReadWrite")
+        `$certStore.Add(`$clientCert)
+        `$certStore.Close()
+        Write-Host "Client cert installed: `$(`$clientCert.Subject) [`$(`$clientCert.Thumbprint)]"
     }
 
     # === EXTRACT EMBEDDED COLLECTOR SCRIPT ===
