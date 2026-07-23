@@ -29,20 +29,25 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-// ---- App Service Plan (Elastic Premium — supports full RBAC storage) ----
+// ---- App Service Plan (Basic B1, Linux dedicated) ----
+// The environment enforces an Azure Policy (storageaccountpublicnetworkmodify) that keeps
+// the storage account's public network access Disabled and shared-key auth off. Flex
+// Consumption cannot deploy its package to the locked-down storage container without adding
+// VNet integration + a private endpoint. A dedicated Basic (B1) Linux plan deploys code to
+// platform-managed storage (via Kudu on the dedicated worker) and reaches the customer
+// storage at runtime through Managed Identity + the AzureServices bypass — exactly like the
+// previous EP1 plan did — while costing a fraction of Elastic Premium.
 resource appPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${baseName}-plan'
   location: location
   tags: tags
   sku: {
-    name: 'EP1'
-    tier: 'ElasticPremium'
-    family: 'EP'
+    name: 'B1'
+    tier: 'Basic'
   }
-  kind: 'elastic'
+  kind: 'linux'
   properties: {
-    maximumElasticWorkerCount: 20
-    reserved: false
+    reserved: true
   }
 }
 

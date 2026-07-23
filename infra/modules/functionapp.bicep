@@ -44,11 +44,14 @@ param clientCertThumbprint string = ''
 @description('Tags')
 param tags object = {}
 
-// ---- Function App ----
+@description('Functions runtime version (dotnet-isolated)')
+param runtimeVersion string = '10.0'
+
+// ---- Function App (Basic B1, Linux dedicated) ----
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: name
   location: location
-  kind: 'functionapp'
+  kind: 'functionapp,linux'
   tags: tags
   identity: {
     type: 'SystemAssigned'
@@ -60,12 +63,20 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
     clientCertMode: 'Required'
     clientCertExclusionPaths: '/api/health'
     siteConfig: {
-      netFrameworkVersion: 'v10.0'
+      linuxFxVersion: 'DOTNET-ISOLATED|${runtimeVersion}'
+      alwaysOn: true
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
       http20Enabled: true
-      use32BitWorkerProcess: false
       appSettings: [
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'dotnet-isolated'
+        }
         // Storage: full RBAC (Managed Identity) — no shared key
         {
           name: 'AzureWebJobsStorage__accountName'
@@ -82,14 +93,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'AzureWebJobsStorage__tableServiceUri'
           value: 'https://${storageAccountName}.table.${environment().suffixes.storage}'
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'dotnet-isolated'
         }
         // Service Bus via Managed Identity (RBAC)
         {

@@ -9,7 +9,7 @@ param name string
 param location string = resourceGroup().location
 
 @description('Retention in days')
-param retentionInDays int = 90
+param retentionInDays int = 30
 
 @description('Tags')
 param tags object = {}
