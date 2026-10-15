@@ -1,6 +1,6 @@
 # 🚀 DO-Monitor — Delivery Optimization Monitoring for Intune
 
-**v2.7.4**
+**v2.8.6**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-.NET%2010-blue)](https://learn.microsoft.com/azure/azure-functions/)
@@ -182,6 +182,8 @@ Run with 64-bit Windows PowerShell 5.1 or PowerShell 7, preferably as SYSTEM
 or an administrator. Existing Azure collection remains unchanged.
 See [Local collector guide](docs/Local-Collector.md) for custom paths, scheduling,
 file format, exit codes, privacy, and later collection using other tools.
+For a dedicated **Intune Win32 package** that installs a **five-minute SYSTEM
+scheduled task**, see [Local Win32 package](docs/Local-Intune-Package.md).
 
 ## Project Structure
 

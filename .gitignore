@@ -28,6 +28,7 @@ functions/local.settings.json
 
 # IntuneWin output
 package/output/
+package/local/build/
 deploy/tools/
 
 # PKI certificates (secrets)
