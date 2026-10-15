@@ -1,0 +1,31 @@
+DO-MONITOR LOCAL - INSTALLAZIONE DA CHIAVETTA USB
+
+1. Copiare TUTTI i file di questa cartella sulla chiavetta.
+2. Fare doppio clic su Installa.cmd e autorizzare il prompt UAC.
+   Se richiesto, utilizzare un account amministratore.
+3. Attendere codice risultato 0. Ora si puo' rimuovere la chiavetta.
+
+Lo script viene copiato in C:\Program Files\DO-Monitor-Local.
+Il task "DO-Monitor Local Collector" gira come SYSTEM ogni 5 minuti.
+Una prima raccolta viene richiesta subito; il PC deve essere acceso per
+le raccolte successive. Non servono rete, Azure, Intune o certificati.
+I percorsi seguono ProgramFiles e ProgramData del PC se diversi da C:\.
+
+Snapshot: C:\ProgramData\DO-Monitor-Local\DO-*.json
+I dati restano sul disco del PC, NON vengono scritti sulla chiavetta.
+La cartella e' accessibile solo ad amministratori e SYSTEM.
+Nessun upload o cancellazione automatica: pianificare raccolta e pulizia.
+
+Per disinstallare, fare doppio clic su Disinstalla.cmd e autorizzare UAC.
+Il task e lo script vengono rimossi; TUTTI GLI SNAPSHOT sono conservati.
+Per ripetere l'installazione, eseguire di nuovo Installa.cmd.
+Questa variante USB non effettua controlli del checksum del collector.
+
+Questa versione gestisce lo stesso task e la stessa cartella del collector
+locale Intune: non crea un secondo task. Se Intune impone ancora l'app,
+puo' reinstallare la propria versione; non usare i due canali insieme.
+Il collector Azure separato "DO-Monitor Collector" non viene modificato.
+
+Se una cartella preesistente ha permessi o proprietario non compatibili,
+l'installazione si interrompe: non cancellare snapshot non ancora raccolti.
+Per informazioni sul problema, leggere il messaggio nella finestra.
