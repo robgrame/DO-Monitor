@@ -40,12 +40,25 @@ if (-not $WorkspaceId) {
 }
 Write-Host "  Workspace ID: $WorkspaceId" -ForegroundColor Gray
 
-# ---- Deploy Workbook ----
-Write-Host "`n[1/2] Deploying Azure Workbook..." -ForegroundColor Yellow
+# ---- Deploy Workbooks ----
+Write-Host "`n[1/2] Deploying Azure Workbooks..." -ForegroundColor Yellow
 
-$WorkbookTemplate = Join-Path $Config.WorkbooksPath "DO-Monitor-Workbook.json"
-if (Test-Path $WorkbookTemplate) {
-    $WorkbookDeployment = "domonitor-workbook-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$Workbooks = @(
+    @{ File = "DO-Monitor-Workbook.json";     Label = "Overview" }
+    @{ File = "DO-Efficiency-Workbook.json";  Label = "Efficiency" }
+    @{ File = "DO-Network-Workbook.json";     Label = "Network" }
+    @{ File = "DO-Packages-Workbook.json";    Label = "Packages & Traffic Type" }
+)
+
+foreach ($wb in $Workbooks) {
+    $WorkbookTemplate = Join-Path $Config.WorkbooksPath $wb.File
+    if (-not (Test-Path $WorkbookTemplate)) {
+        Write-Warning "  [$($wb.Label)] template not found: $WorkbookTemplate"
+        continue
+    }
+
+    $WorkbookDeployment = "domonitor-wb-$([IO.Path]::GetFileNameWithoutExtension($wb.File))-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    Write-Host "  - Deploying $($wb.Label)..." -ForegroundColor Gray
 
     az deployment group create `
         --name $WorkbookDeployment `
@@ -55,12 +68,10 @@ if (Test-Path $WorkbookTemplate) {
         --output none
 
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "  Workbook deployed successfully." -ForegroundColor Green
+        Write-Host "    OK: $($wb.Label) deployed." -ForegroundColor Green
     } else {
-        Write-Warning "  Workbook deployment failed. You can deploy it manually from the Azure Portal."
+        Write-Warning "    FAILED: $($wb.Label). Deploy it manually from the Azure Portal."
     }
-} else {
-    Write-Warning "  Workbook template not found at: $WorkbookTemplate"
 }
 
 # ---- Deploy Alert Rules ----
@@ -114,7 +125,7 @@ Write-Host "`n========================================" -ForegroundColor Green
 Write-Host " Monitoring deployed successfully!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Workbook:    DO-Monitor Dashboard" -ForegroundColor White
+Write-Host "  Workbooks:   Overview, Efficiency, Network, Packages" -ForegroundColor White
 Write-Host "  Alerts:      3 Scheduled Query Rules" -ForegroundColor White
 Write-Host "  Action Group: DO-Monitor-Alerts" -ForegroundColor White
 Write-Host ""

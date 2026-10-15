@@ -50,6 +50,10 @@ A disk/ACL/write failure produces exit code 1, not a successful collection.
 
 ## Schedule without Azure
 
+For managed installation through Intune with a **five-minute SYSTEM task**, use
+the [dedicated Win32 package](Local-Intune-Package.md). The manual example below
+uses a separate, configurable fifteen-minute interval.
+
 Copy the script to an administrator-controlled local path, for example
 `C:\Program Files\DO-Monitor-Local\Collect-DOStatusLocal.ps1`, then create a task
 from an elevated PowerShell session:
@@ -137,6 +141,9 @@ which may include sensitive URL parameters. They are access-controlled but
 restrict downstream storage access, and define retention suitable for your organization.
 
 ## Development verification
+
+For per-machine job statistics, counter-aware traffic totals, policy history and
+performance summaries, see [Offline snapshot analysis](Local-Snapshot-Analysis.md).
 
 Run `.\scripts\tests\Test-Collect-DOStatusLocal.ps1` with 64-bit PowerShell.
 It uses mocked Windows data sources in a temporary dedicated directory and does

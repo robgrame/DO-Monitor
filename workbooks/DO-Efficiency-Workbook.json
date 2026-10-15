@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "workbookDisplayName": {
+      "type": "string",
+      "defaultValue": "Delivery Optimization — Efficiency"
+    },
+    "workbookSourceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource ID of the Log Analytics workspace"
+      }
+    },
+    "workbookId": {
+      "type": "string",
+      "defaultValue": "[guid('Delivery Optimization — Efficiency')]",
+      "metadata": {
+        "description": "Workbook resource name (GUID)"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "microsoft.insights/workbooks",
+      "apiVersion": "2022-04-01",
+      "name": "[parameters('workbookId')]",
+      "location": "[resourceGroup().location]",
+      "kind": "shared",
+      "properties": {
+        "displayName": "[parameters('workbookDisplayName')]",
+        "serializedData": "{\"version\": \"Notebook/1.0\", \"items\": [{\"type\": 1, \"content\": {\"json\": \"# ⚙️ Delivery Optimization — Efficienza\\n---\\nQuanto è efficace il peer-caching? Quanta banda WAN viene risparmiata, quali device contribuiscono come seeder, quali hanno cache fredda.\"}, \"name\": \"title\"}, {\"type\": 9, \"content\": {\"version\": \"KqlParameterItem/1.0\", \"parameters\": [{\"id\": \"timeRange\", \"version\": \"KqlParameterItem/1.0\", \"name\": \"TimeRange\", \"type\": 4, \"isRequired\": true, \"value\": {\"durationMs\": 604800000}, \"typeSettings\": {\"selectableValues\": [{\"durationMs\": 3600000}, {\"durationMs\": 86400000}, {\"durationMs\": 604800000}, {\"durationMs\": 2592000000}]}}]}, \"name\": \"parameters\"}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n\\n| summarize Peer=sum(BytesFromPeers), HTTP=sum(BytesFromHttp), Cache=sum(BytesFromCacheServer)\\n         by bin(TimeGenerated, 1d)\\n| extend Total=Peer+HTTP+Cache\\n| extend PeerPct=round(100.0*Peer/iif(Total==0,1,Total), 1),\\n         CachePct=round(100.0*Cache/iif(Total==0,1,Total), 1),\\n         HttpPct=round(100.0*HTTP/iif(Total==0,1,Total), 1)\\n| project TimeGenerated, PeerPct, CachePct, HttpPct\\n| order by TimeGenerated asc\", \"size\": 0, \"title\": \"📈 Efficienza peer/cache nel tempo (%)\", \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"linechart\", \"chartSettings\": {\"yAxis\": [\"PeerPct\", \"CachePct\", \"HttpPct\"]}}, \"name\": \"effTrend\"}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n\\n| summarize Peer=sum(BytesFromPeers), HTTP=sum(BytesFromHttp), Cache=sum(BytesFromCacheServer), Total=sum(TotalBytesDownloaded)\\n| extend\\n    SavedWAN_GB=round((Peer+Cache)/1073741824.0, 2),\\n    SavedWAN_Pct=round(100.0*(Peer+Cache)/iif(Total==0,1,Total), 1),\\n    PeerOnly_Pct=round(100.0*Peer/iif(Total==0,1,Total), 1),\\n    Cache_Pct=round(100.0*Cache/iif(Total==0,1,Total), 1)\", \"size\": 4, \"title\": \"💰 Banda risparmiata\", \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"tiles\", \"tileSettings\": {\"titleContent\": {\"columnMatch\": \"SavedWAN_Pct\", \"formatter\": 12}, \"leftContent\": {\"columnMatch\": \"SavedWAN_GB\", \"formatter\": 12}, \"showBorder\": true}}, \"name\": \"savedKpi\"}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n\\n| where TotalBytesDownloaded > 0\\n| extend Bucket=case(\\n    PercentPeerCaching == 0, '0% (nessun peer)',\\n    PercentPeerCaching <= 25, '1-25%',\\n    PercentPeerCaching <= 50, '26-50%',\\n    PercentPeerCaching <= 75, '51-75%',\\n    PercentPeerCaching < 100, '76-99%',\\n    '100% (full peer)')\\n| summarize Jobs=count() by Bucket\\n| order by Bucket asc\", \"size\": 0, \"title\": \"📊 Distribuzione PercentPeerCaching (job)\", \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"barchart\"}, \"name\": \"peerHistogram\"}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n\\n| summarize HttpBytes=sum(BytesFromHttp),\\n            PeerBytes=sum(BytesFromPeers),\\n            Total=sum(TotalBytesDownloaded), Jobs=count()\\n         by DeviceName, Domain\\n| where Total > 0\\n| extend HttpPct=round(100.0*HttpBytes/Total, 1),\\n         HttpMB=round(HttpBytes/1048576.0, 1),\\n         TotalMB=round(Total/1048576.0, 1)\\n| project DeviceName, Domain, Jobs, TotalMB, HttpMB, HttpPct\\n| order by HttpMB desc\\n| take 25\", \"size\": 0, \"title\": \"⬇️ Top 25 device per traffico HTTP/CDN\", \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"table\", \"gridSettings\": {\"formatters\": [{\"columnMatch\": \"HttpMB\", \"formatter\": 8, \"formatOptions\": {\"palette\": \"red\"}}]}}, \"name\": \"topHttpDevices\"}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n\\n| summarize HttpBytes=sum(BytesFromHttp),\\n            PeerBytes=sum(BytesFromPeers),\\n            CacheBytes=sum(BytesFromCacheServer),\\n            Total=sum(TotalBytesDownloaded),\\n            Jobs=count() by DeviceName, Domain\\n| where Total > 104857600  // > 100 MB\\n| extend PeerPct=round(100.0*PeerBytes/iif(Total==0,1,Total), 1),\\n         HttpMB=round(HttpBytes/1048576.0, 1),\\n         TotalMB=round(Total/1048576.0, 1)\\n| where PeerPct < 5\\n| project DeviceName, Domain, Jobs, TotalMB, HttpMB, PeerPct\\n| order by HttpMB desc\\n| take 50\", \"size\": 0, \"title\": \"🥶 Device con cache 'fredda' (>100MB, <5% peer)\", \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"table\"}, \"name\": \"coldDevices\"}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n\\n| summarize Peer=sum(BytesFromPeers), HTTP=sum(BytesFromHttp), Cache=sum(BytesFromCacheServer),\\n            Total=sum(TotalBytesDownloaded), Devices=dcount(DeviceName) by Domain\\n| extend PeerPct=round(100.0*Peer/iif(Total==0,1,Total), 1),\\n         CachePct=round(100.0*Cache/iif(Total==0,1,Total), 1),\\n         TotalGB=round(Total/1073741824.0, 2)\\n| project Domain, Devices, TotalGB, PeerPct, CachePct\\n| order by TotalGB desc\", \"size\": 0, \"title\": \"🏢 Efficienza per dominio\", \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"table\", \"gridSettings\": {\"formatters\": [{\"columnMatch\": \"PeerPct\", \"formatter\": 8, \"formatOptions\": {\"palette\": \"greenRed\"}}, {\"columnMatch\": \"CachePct\", \"formatter\": 8, \"formatOptions\": {\"palette\": \"blue\"}}]}}, \"name\": \"byDomain\"}, {\"type\": 3, \"content\": {\"version\": \"KqlItem/1.0\", \"query\": \"DOStatus_CL\\n| where TimeGenerated {TimeRange}\\n\\n| summarize Peer=sum(BytesFromPeers), Total=sum(TotalBytesDownloaded),\\n            Devices=dcount(DeviceName), Jobs=count() by DownloadMode\\n| extend PeerPct=round(100.0*Peer/iif(Total==0,1,Total), 1),\\n         TotalGB=round(Total/1073741824.0, 2)\\n| project DownloadMode, Devices, Jobs, TotalGB, PeerPct\\n| order by TotalGB desc\", \"size\": 0, \"title\": \"🎛️ Efficienza per DownloadMode\", \"queryType\": 0, \"resourceType\": \"microsoft.operationalinsights/workspaces\", \"visualization\": \"table\"}, \"name\": \"byDlMode\"}], \"isLocked\": false}",
+        "version": "1.0",
+        "sourceId": "[parameters('workbookSourceId')]",
+        "category": "workbook"
+      }
+    }
+  ]
+}
