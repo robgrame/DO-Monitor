@@ -1,14 +1,22 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-    Verifies the real IntuneWin payload and mocked package lifecycle. Version: 2.9.8.
+    Verifies the real package payload and mocked lifecycle. Version: 2.10.12.
     Does not install tasks, elevate, or modify real Program Files/ProgramData.
 #>
+[CmdletBinding()]
+param([switch]$USB)
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
-$Version = (Get-Content -LiteralPath (Join-Path $RepoRoot 'package\local\VERSION') -Raw).Trim()
-$PayloadDir = Join-Path $RepoRoot "package\local\build\$Version"
-$OutputDir = Join-Path $RepoRoot "package\output\local\$Version"
+if ($USB) {
+    $Version = (Get-Content -LiteralPath (Join-Path $RepoRoot 'VERSION') -Raw).Trim()
+    $PayloadDir = Join-Path $RepoRoot "package\usb\output\DO-Monitor-Local-USB-$Version"
+    $OutputDir = $PayloadDir
+} else {
+    $Version = (Get-Content -LiteralPath (Join-Path $RepoRoot 'package\local\VERSION') -Raw).Trim()
+    $PayloadDir = Join-Path $RepoRoot "package\local\build\$Version"
+    $OutputDir = Join-Path $RepoRoot "package\output\local\$Version"
+}
 $TestRoot = Join-Path $env:TEMP ('DO-Local-Package-Tests-' + [Guid]::NewGuid().ToString('N'))
 $OriginalProgramFiles = $env:ProgramFiles
 $OriginalProgramData = $env:ProgramData
@@ -81,7 +89,20 @@ function Test-IntuneWinPayload {
 }
 
 try {
-    Test-IntuneWinPayload
+    if ($USB) {
+        Assert-True (@(Get-ChildItem -LiteralPath $PayloadDir -File).Count -eq 11) 'USB folder contains eleven ready-to-copy files'
+        Assert-True (@(Get-ChildItem -LiteralPath $PayloadDir -Directory).Count -eq 0) 'USB files are flat, with no payload subfolder'
+        $Launcher = Get-Content -LiteralPath (Join-Path $PayloadDir 'USB-Launcher.ps1') -Raw
+        Assert-True ($Launcher -match '-Verb RunAs' -and $Launcher -match '-Wait -PassThru') 'USB launcher requests UAC and waits for completion'
+        $Detection = Get-Content -LiteralPath (Join-Path $PayloadDir 'Detect-DOMonitorLocal.ps1') -Raw
+        Assert-True ($Detection -notmatch 'Get-FileHash|ExpectedCollectorHash|__COLLECTOR_SHA256__') 'USB detection contains no checksum check'
+        foreach ($Name in @('Installa.cmd', 'Disinstalla.cmd')) {
+            $Text = Get-Content -LiteralPath (Join-Path $PayloadDir $Name) -Raw
+            Assert-True ($Text -match 'Sysnative' -and $Text -match 'USB-Launcher.ps1') "USB launcher selects 64-bit PowerShell: $Name"
+        }
+    } else {
+        Test-IntuneWinPayload
+    }
     foreach ($Name in @('Install-DOMonitorLocal.ps1', 'Detect-DOMonitorLocal.ps1')) {
         $Built = Get-Content -LiteralPath (Join-Path $PayloadDir $Name) -Raw
         Assert-True (-not $Built.Contains('__PACKAGE_VERSION__')) "Functional version token resolved: $Name"
@@ -207,7 +228,8 @@ try {
     $MockState.UnsafeAcl = $false
     $CollectorPath = Join-Path $env:ProgramFiles 'DO-Monitor-Local\Collect-DOStatusLocal.ps1'
     Add-Content -LiteralPath $CollectorPath -Value '# changed'
-    Assert-True ((Invoke-Detection).Code -eq 1) 'Detection refuses modified collector bytes'
+    $ExpectedModifiedCode = if ($USB) { 0 } else { 1 }
+    Assert-True ((Invoke-Detection).Code -eq $ExpectedModifiedCode) 'Checksum detection is disabled only for USB'
     $Messages = & (Join-Path $PayloadDir 'Install-DOMonitorLocal.ps1')
     Assert-True ($LASTEXITCODE -eq 0) "Reinstall repairs modified script: $Messages"
 

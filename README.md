@@ -1,6 +1,6 @@
 # 🚀 DO-Monitor — Delivery Optimization Monitoring for Intune
 
-**v2.9.8**
+**v2.10.12**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-.NET%2010-blue)](https://learn.microsoft.com/azure/azure-functions/)
@@ -187,6 +187,8 @@ scheduled task**, see [Local Win32 package](docs/Local-Intune-Package.md).
 Analyze one machine's snapshots with `scripts\Analyze-DOLocalSnapshots.ps1`:
 see [Offline snapshot analysis](docs/Local-Snapshot-Analysis.md) for job statistics,
 counter deduplication, policy changes and performance summaries.
+For offline installation from a USB drive, copy the ready-to-use folder and run
+`Installa.cmd`: see [USB installation](docs/USB-Installation.md).
 
 ## Project Structure
 
