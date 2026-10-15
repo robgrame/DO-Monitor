@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.42.1.51946",
-      "templateHash": "3988885767412267965"
+      "version": "0.43.8.12551",
+      "templateHash": "160424516937479733"
     }
   },
   "parameters": {
@@ -209,7 +209,7 @@
             "value": "[parameters('location')]"
           },
           "retentionInDays": {
-            "value": 90
+            "value": 30
           },
           "tags": {
             "value": "[variables('tags')]"
@@ -221,8 +221,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "17169531573254324462"
+              "version": "0.43.8.12551",
+              "templateHash": "11305773937713334110"
             }
           },
           "parameters": {
@@ -241,7 +241,7 @@
             },
             "retentionInDays": {
               "type": "int",
-              "defaultValue": 90,
+              "defaultValue": 30,
               "metadata": {
                 "description": "Retention in days"
               }
@@ -315,8 +315,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "4168096478523970619"
+              "version": "0.43.8.12551",
+              "templateHash": "10697157620775440518"
             }
           },
           "parameters": {
@@ -370,14 +370,12 @@
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
               "sku": {
-                "name": "EP1",
-                "tier": "ElasticPremium",
-                "family": "EP"
+                "name": "B1",
+                "tier": "Basic"
               },
-              "kind": "elastic",
+              "kind": "linux",
               "properties": {
-                "maximumElasticWorkerCount": 20,
-                "reserved": false
+                "reserved": true
               }
             }
           ],
@@ -427,8 +425,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "10848983167224315126"
+              "version": "0.43.8.12551",
+              "templateHash": "16963191149478345693"
             }
           },
           "parameters": {
@@ -512,8 +510,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "8450944485524015512"
+              "version": "0.43.8.12551",
+              "templateHash": "7337014020232028690"
             }
           },
           "parameters": {
@@ -643,8 +641,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "12142991385890150253"
+              "version": "0.43.8.12551",
+              "templateHash": "9396325846146709975"
             }
           },
           "parameters": {
@@ -746,7 +744,7 @@
             "value": "DOStatus_CL"
           },
           "retentionInDays": {
-            "value": 90
+            "value": 30
           }
         },
         "template": {
@@ -755,8 +753,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "2325755251891952983"
+              "version": "0.43.8.12551",
+              "templateHash": "306745790653862518"
             }
           },
           "parameters": {
@@ -775,7 +773,7 @@
             },
             "retentionInDays": {
               "type": "int",
-              "defaultValue": 90,
+              "defaultValue": 30,
               "metadata": {
                 "description": "Retention in days"
               }
@@ -808,6 +806,11 @@
                       "description": "Windows OS version"
                     },
                     {
+                      "name": "OSBuild",
+                      "type": "string",
+                      "description": "Windows OS build number"
+                    },
+                    {
                       "name": "SerialNumber",
                       "type": "string",
                       "description": "Device serial number"
@@ -818,19 +821,34 @@
                       "description": "AD domain"
                     },
                     {
+                      "name": "Manufacturer",
+                      "type": "string",
+                      "description": "Device manufacturer"
+                    },
+                    {
+                      "name": "Model",
+                      "type": "string",
+                      "description": "Device model"
+                    },
+                    {
                       "name": "FileId",
                       "type": "string",
                       "description": "DO job file ID"
                     },
                     {
-                      "name": "FileName",
-                      "type": "string",
-                      "description": "Downloaded file name"
-                    },
-                    {
                       "name": "FileSize_Bytes",
                       "type": "long",
                       "description": "File size in bytes"
+                    },
+                    {
+                      "name": "FileSizeInCache",
+                      "type": "long",
+                      "description": "File size in DO cache"
+                    },
+                    {
+                      "name": "TotalBytesDownloaded",
+                      "type": "long",
+                      "description": "Total bytes downloaded"
                     },
                     {
                       "name": "Status",
@@ -841,6 +859,16 @@
                       "name": "Priority",
                       "type": "string",
                       "description": "Download priority"
+                    },
+                    {
+                      "name": "DownloadMode",
+                      "type": "string",
+                      "description": "DO download mode"
+                    },
+                    {
+                      "name": "PercentPeerCaching",
+                      "type": "real",
+                      "description": "Peer caching percentage"
                     },
                     {
                       "name": "BytesFromPeers",
@@ -868,29 +896,89 @@
                       "description": "Bytes from group peers"
                     },
                     {
-                      "name": "BytesFromIntPeers",
+                      "name": "BytesFromInternetPeers",
                       "type": "long",
                       "description": "Bytes from Internet peers"
                     },
                     {
-                      "name": "TotalBytesDownloaded",
+                      "name": "BytesFromLinkLocalPeers",
                       "type": "long",
-                      "description": "Total bytes downloaded"
+                      "description": "Bytes from link-local peers"
                     },
                     {
-                      "name": "PercentPeerCaching",
-                      "type": "real",
-                      "description": "Peer caching percentage"
+                      "name": "BytesToLanPeers",
+                      "type": "long",
+                      "description": "Bytes uploaded to LAN peers"
                     },
                     {
-                      "name": "DownloadMode",
-                      "type": "string",
-                      "description": "Configured DO download mode"
+                      "name": "BytesToGroupPeers",
+                      "type": "long",
+                      "description": "Bytes uploaded to group peers"
+                    },
+                    {
+                      "name": "BytesToInternetPeers",
+                      "type": "long",
+                      "description": "Bytes uploaded to Internet peers"
+                    },
+                    {
+                      "name": "BytesToLinkLocalPeers",
+                      "type": "long",
+                      "description": "Bytes uploaded to link-local peers"
+                    },
+                    {
+                      "name": "HttpConnectionCount",
+                      "type": "int",
+                      "description": "HTTP connections"
+                    },
+                    {
+                      "name": "LanConnectionCount",
+                      "type": "int",
+                      "description": "LAN peer connections"
+                    },
+                    {
+                      "name": "GroupConnectionCount",
+                      "type": "int",
+                      "description": "Group peer connections"
+                    },
+                    {
+                      "name": "InternetConnectionCount",
+                      "type": "int",
+                      "description": "Internet peer connections"
+                    },
+                    {
+                      "name": "LinkLocalConnectionCount",
+                      "type": "int",
+                      "description": "Link-local connections"
+                    },
+                    {
+                      "name": "CacheServerConnectionCount",
+                      "type": "int",
+                      "description": "Cache server connections"
+                    },
+                    {
+                      "name": "NumPeers",
+                      "type": "int",
+                      "description": "Number of peers"
                     },
                     {
                       "name": "SourceURL",
                       "type": "string",
                       "description": "Download source URL"
+                    },
+                    {
+                      "name": "CacheHost",
+                      "type": "string",
+                      "description": "Cache host URI"
+                    },
+                    {
+                      "name": "PredefinedCallerApplication",
+                      "type": "string",
+                      "description": "Calling application"
+                    },
+                    {
+                      "name": "DownloadDuration",
+                      "type": "real",
+                      "description": "Download duration in seconds"
                     },
                     {
                       "name": "IsPinned",
@@ -947,8 +1035,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "8485988781950249102"
+              "version": "0.43.8.12551",
+              "templateHash": "16062848673887866823"
             }
           },
           "parameters": {
@@ -1028,6 +1116,10 @@
                         "type": "string"
                       },
                       {
+                        "name": "OSBuild",
+                        "type": "string"
+                      },
+                      {
                         "name": "SerialNumber",
                         "type": "string"
                       },
@@ -1036,15 +1128,27 @@
                         "type": "string"
                       },
                       {
+                        "name": "Manufacturer",
+                        "type": "string"
+                      },
+                      {
+                        "name": "Model",
+                        "type": "string"
+                      },
+                      {
                         "name": "FileId",
                         "type": "string"
                       },
                       {
-                        "name": "FileName",
-                        "type": "string"
+                        "name": "FileSize_Bytes",
+                        "type": "long"
                       },
                       {
-                        "name": "FileSize_Bytes",
+                        "name": "FileSizeInCache",
+                        "type": "long"
+                      },
+                      {
+                        "name": "TotalBytesDownloaded",
                         "type": "long"
                       },
                       {
@@ -1054,6 +1158,14 @@
                       {
                         "name": "Priority",
                         "type": "string"
+                      },
+                      {
+                        "name": "DownloadMode",
+                        "type": "string"
+                      },
+                      {
+                        "name": "PercentPeerCaching",
+                        "type": "real"
                       },
                       {
                         "name": "BytesFromPeers",
@@ -1076,24 +1188,72 @@
                         "type": "long"
                       },
                       {
-                        "name": "BytesFromIntPeers",
+                        "name": "BytesFromInternetPeers",
                         "type": "long"
                       },
                       {
-                        "name": "TotalBytesDownloaded",
+                        "name": "BytesFromLinkLocalPeers",
                         "type": "long"
                       },
                       {
-                        "name": "PercentPeerCaching",
-                        "type": "real"
+                        "name": "BytesToLanPeers",
+                        "type": "long"
                       },
                       {
-                        "name": "DownloadMode",
-                        "type": "string"
+                        "name": "BytesToGroupPeers",
+                        "type": "long"
+                      },
+                      {
+                        "name": "BytesToInternetPeers",
+                        "type": "long"
+                      },
+                      {
+                        "name": "BytesToLinkLocalPeers",
+                        "type": "long"
+                      },
+                      {
+                        "name": "HttpConnectionCount",
+                        "type": "int"
+                      },
+                      {
+                        "name": "LanConnectionCount",
+                        "type": "int"
+                      },
+                      {
+                        "name": "GroupConnectionCount",
+                        "type": "int"
+                      },
+                      {
+                        "name": "InternetConnectionCount",
+                        "type": "int"
+                      },
+                      {
+                        "name": "LinkLocalConnectionCount",
+                        "type": "int"
+                      },
+                      {
+                        "name": "CacheServerConnectionCount",
+                        "type": "int"
+                      },
+                      {
+                        "name": "NumPeers",
+                        "type": "int"
                       },
                       {
                         "name": "SourceURL",
                         "type": "string"
+                      },
+                      {
+                        "name": "CacheHost",
+                        "type": "string"
+                      },
+                      {
+                        "name": "PredefinedCallerApplication",
+                        "type": "string"
+                      },
+                      {
+                        "name": "DownloadDuration",
+                        "type": "real"
                       },
                       {
                         "name": "IsPinned",
@@ -1234,8 +1394,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "18144127360982797782"
+              "version": "0.43.8.12551",
+              "templateHash": "1696965347729943704"
             }
           },
           "parameters": {
@@ -1325,6 +1485,13 @@
               "metadata": {
                 "description": "Tags"
               }
+            },
+            "runtimeVersion": {
+              "type": "string",
+              "defaultValue": "10.0",
+              "metadata": {
+                "description": "Functions runtime version (dotnet-isolated)"
+              }
             }
           },
           "resources": [
@@ -1333,7 +1500,7 @@
               "apiVersion": "2023-12-01",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
-              "kind": "functionapp",
+              "kind": "functionapp,linux",
               "tags": "[parameters('tags')]",
               "identity": {
                 "type": "SystemAssigned"
@@ -1345,12 +1512,20 @@
                 "clientCertMode": "Required",
                 "clientCertExclusionPaths": "/api/health",
                 "siteConfig": {
-                  "netFrameworkVersion": "v10.0",
+                  "linuxFxVersion": "[format('DOTNET-ISOLATED|{0}', parameters('runtimeVersion'))]",
+                  "alwaysOn": true,
                   "ftpsState": "Disabled",
                   "minTlsVersion": "1.2",
                   "http20Enabled": true,
-                  "use32BitWorkerProcess": false,
                   "appSettings": [
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "dotnet-isolated"
+                    },
                     {
                       "name": "AzureWebJobsStorage__accountName",
                       "value": "[parameters('storageAccountName')]"
@@ -1366,14 +1541,6 @@
                     {
                       "name": "AzureWebJobsStorage__tableServiceUri",
                       "value": "[format('https://{0}.table.{1}', parameters('storageAccountName'), environment().suffixes.storage)]"
-                    },
-                    {
-                      "name": "FUNCTIONS_EXTENSION_VERSION",
-                      "value": "~4"
-                    },
-                    {
-                      "name": "FUNCTIONS_WORKER_RUNTIME",
-                      "value": "dotnet-isolated"
                     },
                     {
                       "name": "ServiceBusConnection__fullyQualifiedNamespace",
@@ -1481,8 +1648,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.42.1.51946",
-              "templateHash": "16837654884949669716"
+              "version": "0.43.8.12551",
+              "templateHash": "5524910747586897553"
             }
           },
           "parameters": {

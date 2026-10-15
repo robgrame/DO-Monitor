@@ -54,7 +54,7 @@ module logAnalyticsWorkspace 'modules/loganalytics.bicep' = if (createWorkspace)
   params: {
     name: '${resourceSuffix}-law'
     location: location
-    retentionInDays: 90
+    retentionInDays: 30
     tags: tags
   }
 }
@@ -119,7 +119,7 @@ module customTable 'modules/customtable.bicep' = {
   params: {
     workspaceName: resolvedWorkspaceName
     tableName: 'DOStatus_CL'
-    retentionInDays: 90
+    retentionInDays: 30
   }
 }
 

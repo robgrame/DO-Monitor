@@ -1,6 +1,6 @@
 # 🚀 DO-Monitor — Delivery Optimization Monitoring for Intune
 
-**v2.6.1**
+**v2.7.4**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-.NET%2010-blue)](https://learn.microsoft.com/azure/azure-functions/)
@@ -17,6 +17,7 @@
 - [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [Local-only Collection](#local-only-collection)
 - [Project Structure](#project-structure)
 - [Deployment Guide](#deployment-guide)
 - [Configuration](#configuration)
@@ -166,6 +167,21 @@ notepad deploy\Config.ps1
 ```
 
 ---
+
+## Local-only Collection
+
+To collect telemetry **without Azure**, use the dedicated standalone script:
+
+```powershell
+.\scripts\Collect-DOStatusLocal.ps1 -Verbose
+```
+
+It saves one access-controlled UTF-8 JSON snapshot per invocation in
+`%ProgramData%\DO-Monitor-Local`, without certificates or network calls.
+Run with 64-bit Windows PowerShell 5.1 or PowerShell 7, preferably as SYSTEM
+or an administrator. Existing Azure collection remains unchanged.
+See [Local collector guide](docs/Local-Collector.md) for custom paths, scheduling,
+file format, exit codes, privacy, and later collection using other tools.
 
 ## Project Structure
 

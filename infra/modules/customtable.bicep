@@ -12,7 +12,7 @@ param workspaceName string
 param tableName string = 'DOStatus_CL'
 
 @description('Retention in days')
-param retentionInDays int = 90
+param retentionInDays int = 30
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: workspaceName
