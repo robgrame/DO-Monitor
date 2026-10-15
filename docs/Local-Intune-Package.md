@@ -29,10 +29,13 @@ package\output\local\2.8.6\Detect-DOMonitorLocal.ps1
 package\output\local\2.8.6\package-info.json
 ```
 
-Build inputs are generated under `package\local\build\2.8.6`. Both directories are
-git-ignored. Every build uses its own version; existing output is never deleted
+Build inputs are generated under `package\local\build\2.8.6` and are git-ignored.
+The released local `.intunewin`, generated detection script and manifest for
+2.8.6 are committed; intermediate/legacy outputs remain excluded. Every build
+uses its own version; existing output is never deleted
 or overwritten. Increment the package/script Build before rebuilding changed
-sources. The existing Azure package and `package\output\Install-DOMonitor.intunewin`
+sources. The package version is maintained in `package\local\VERSION`, independently
+of repository releases that only add analysis tools. The existing Azure package and `package\output\Install-DOMonitor.intunewin`
 are not modified.
 
 ## Intune configuration

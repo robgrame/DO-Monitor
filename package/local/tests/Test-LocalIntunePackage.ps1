@@ -1,12 +1,12 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-    Verifies the real IntuneWin payload and mocked package lifecycle. Version: 2.8.6.
+    Verifies the real IntuneWin payload and mocked package lifecycle. Version: 2.9.8.
     Does not install tasks, elevate, or modify real Program Files/ProgramData.
 #>
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
-$Version = (Get-Content -LiteralPath (Join-Path $RepoRoot 'VERSION') -Raw).Trim()
+$Version = (Get-Content -LiteralPath (Join-Path $RepoRoot 'package\local\VERSION') -Raw).Trim()
 $PayloadDir = Join-Path $RepoRoot "package\local\build\$Version"
 $OutputDir = Join-Path $RepoRoot "package\output\local\$Version"
 $TestRoot = Join-Path $env:TEMP ('DO-Local-Package-Tests-' + [Guid]::NewGuid().ToString('N'))
@@ -86,7 +86,7 @@ try {
         $Built = Get-Content -LiteralPath (Join-Path $PayloadDir $Name) -Raw
         Assert-True (-not $Built.Contains('__PACKAGE_VERSION__')) "Functional version token resolved: $Name"
         $VersionPattern = '(?m)^\$(?:RequiredVersion|Version) = ''{0}''\r?$' -f [regex]::Escape($Version)
-        Assert-True ($Built -match $VersionPattern) "Functional version matches repository version: $Name"
+        Assert-True ($Built -match $VersionPattern) "Functional version matches package version: $Name"
     }
     $null = New-Item -ItemType Directory -Path $TestRoot
     Import-Module (Join-Path $PayloadDir 'LocalPackage.psm1')

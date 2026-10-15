@@ -142,6 +142,9 @@ restrict downstream storage access, and define retention suitable for your organ
 
 ## Development verification
 
+For per-machine job statistics, counter-aware traffic totals, policy history and
+performance summaries, see [Offline snapshot analysis](Local-Snapshot-Analysis.md).
+
 Run `.\scripts\tests\Test-Collect-DOStatusLocal.ps1` with 64-bit PowerShell.
 It uses mocked Windows data sources in a temporary dedicated directory and does
 not query the real DO service or publish data remotely.

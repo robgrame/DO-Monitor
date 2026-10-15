@@ -27,7 +27,14 @@ functions/local.settings.json
 *.log
 
 # IntuneWin output
-package/output/
+package/output/*
+!package/output/local/
+package/output/local/*
+!package/output/local/2.8.6/
+package/output/local/2.8.6/*
+!package/output/local/2.8.6/Install-DOMonitorLocal.intunewin
+!package/output/local/2.8.6/Detect-DOMonitorLocal.ps1
+!package/output/local/2.8.6/package-info.json
 package/local/build/
 deploy/tools/
 

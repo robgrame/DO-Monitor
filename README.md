@@ -1,6 +1,6 @@
 # 🚀 DO-Monitor — Delivery Optimization Monitoring for Intune
 
-**v2.8.6**
+**v2.9.8**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Azure Functions](https://img.shields.io/badge/Azure%20Functions-.NET%2010-blue)](https://learn.microsoft.com/azure/azure-functions/)
@@ -184,6 +184,9 @@ See [Local collector guide](docs/Local-Collector.md) for custom paths, schedulin
 file format, exit codes, privacy, and later collection using other tools.
 For a dedicated **Intune Win32 package** that installs a **five-minute SYSTEM
 scheduled task**, see [Local Win32 package](docs/Local-Intune-Package.md).
+Analyze one machine's snapshots with `scripts\Analyze-DOLocalSnapshots.ps1`:
+see [Offline snapshot analysis](docs/Local-Snapshot-Analysis.md) for job statistics,
+counter deduplication, policy changes and performance summaries.
 
 ## Project Structure
 
@@ -233,7 +236,11 @@ DO-Monitor/
 │   ├── 06-Validate-Deployment.ps1        # End-to-end validation
 │   └── Manage-TrustedCAChains.ps1        # CA chain CRUD operations
 ├── workbooks/
-│   └── DO-Monitor-Workbook.json          # Azure Workbook template
+│   ├── DO-Monitor-Workbook.json          # Overview dashboard
+│   ├── DO-Efficiency-Workbook.json       # Peer-caching efficiency analysis
+│   ├── DO-Network-Workbook.json          # Network / peer-type / MCC analysis
+│   ├── DO-Packages-Workbook.json         # Per-package & traffic-category analysis
+│   └── _build_workbooks.py               # Generator for the 4 workbook templates
 ├── alerts/
 │   └── DO-Alert-Rules.json               # Scheduled Query Alert Rules
 └── docs/
@@ -353,16 +360,69 @@ Multiple CA chains are supported for certificate rotation and multi-CA environme
 
 ## Monitoring & Alerting
 
-### Workbook Dashboard
+### Workbook Dashboards
+
+Four ARM workbook templates are deployed by `04-Deploy-Monitoring.ps1`. All share a
+common `TimeRange` + `Domain` parameter pair.
+
+**1. Overview (`DO-Monitor-Workbook.json`)** — fleet-wide health.
 
 | Panel | Description |
 |---|---|
-| 📊 Traffic Distribution | Pie chart: Peers vs HTTP/CDN vs Cache Server |
+| 🎯 KPI tiles | Devices, jobs, total/peer/HTTP/cache GB, global peer-efficiency % |
+| 📊 Traffic Distribution | Pie chart: Peers vs HTTP/CDN vs Connected Cache |
 | 📈 Daily Trend | Line chart: bandwidth by source over time |
-| 🖥️ Top 50 Devices | Table: devices ranked by total download volume |
-| 📦 Top 20 Files | Table: most downloaded files with peer % |
-| ⚙️ Download Modes | Bar chart: DO mode distribution across fleet |
-| 💰 Bandwidth Saved | Tile: total bandwidth saved via peer caching |
+| 🖥️ Top 50 Devices | Table with conditional heatmap on Peer% and Total MB |
+| 💰 Bandwidth Saved | Tile: WAN bytes saved (peer + cache) and % |
+
+**2. Efficiency (`DO-Efficiency-Workbook.json`)** — is DO actually doing its job?
+
+| Panel | Description |
+|---|---|
+| 📈 Peer/Cache/HTTP % over time | Daily trend of source mix in % |
+| 💰 Saved bandwidth KPI | GB and % saved (peer + MCC) |
+| 📊 PercentPeerCaching histogram | Distribution of job-level peer ratio (6 buckets) |
+| ⬇️ Top 25 HTTP-heavy devices | Devices pulling most bytes from HTTP/CDN |
+| 🥶 Cold-cache devices | Devices >100 MB but <5 % from peers (misconfig / isolation) |
+| 🏢 Efficiency by Domain | Per-AD-domain table |
+| 🎛️ Efficiency by DownloadMode | Compares peer % across DO modes |
+
+**3. Network (`DO-Network-Workbook.json`)** — where is the traffic flowing?
+
+| Panel | Description |
+|---|---|
+| 🥧 Download by peer type | LAN / Group / Internet split |
+| 🥧 Source distribution | Peers vs HTTP/CDN vs Connected Cache |
+| 📈 Daily stacked peer trend | Bars per peer type per day |
+| 📈 Source trend | Line: Peer/HTTP/Cache MB per day |
+| 🏆 Top 50 LAN-peer receivers | Best beneficiaries of in-LAN peer traffic |
+| 🗄️ MCC daily contribution | Connected Cache bytes per day |
+
+**4. Packages & Traffic Type (`DO-Packages-Workbook.json`)** — *what* are we downloading?
+
+| Panel | Description |
+|---|---|
+| 🏷️ Traffic by category | Auto-derived category (Windows Update, M365, Store, Edge, Defender…) |
+| 🥧 Category share | Pie chart of GB by category |
+| 📦 Top 50 packages | Per-file aggregates (uses `FileName`, falls back to SourceURL/FileId) |
+| 🌍 Top 25 hosts | Per-`SourceURL` Host aggregates |
+| 📈 Daily trend per category | Stacked bars over time |
+| 📐 File-size distribution | Buckets: <10 MB / 10-100 MB / 100 MB-1 GB / 1-5 GB / >5 GB |
+| 🧪 Per-package source breakdown | HTTP/Cache/LAN/Group/Internet MB for top 25 packages |
+
+> All KQL queries reference **only** the columns currently materialised in
+> `DOStatus_CL` (verified live against the workspace):
+> `DeviceName, OSVersion, SerialNumber, Domain, FileId, FileName, FileSize_Bytes,
+> Status, Priority, DownloadMode, PercentPeerCaching, SourceURL, IsPinned,
+> TotalBytesDownloaded, BytesFromPeers, BytesFromHttp, BytesFromCacheServer,
+> BytesFromLanPeers, BytesFromGroupPeers, BytesFromIntPeers`.
+> The Bicep `infra/modules/customtable.bicep` file declares additional columns
+> (upload bytes, connection counts, `CacheHost`, `PredefinedCallerApplication`,
+> `DownloadDuration`) that are **not yet active** in the live table — extend the
+> DCR/ingestion model first if you want to surface those.
+>
+> Regenerate the JSON templates after editing the KQL with
+> `python workbooks/_build_workbooks.py`.
 
 ### Alert Rules
 

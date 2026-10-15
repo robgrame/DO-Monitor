@@ -1,0 +1,12 @@
+{
+    "PackageVersion":  "2.8.6",
+    "CollectorSHA256":  "814756250ECE1B8812EE6CA4EE9056846360B8D5D3D6E26C65310016BFCF74F1",
+    "PackageSHA256":  "1F277D22D29258F363FFF025AEE25DDAE3C87D24A6CBA68E15E4F430A2F1751F",
+    "SetupFile":  "Install-DOMonitorLocal.cmd",
+    "TaskName":  "DO-Monitor Local Collector",
+    "Interval":  "PT5M",
+    "InstallCommand":  "Install-DOMonitorLocal.cmd",
+    "UninstallCommand":  "Uninstall-DOMonitorLocal.cmd",
+    "InstallBehavior":  "System",
+    "DetectionRunAs32Bit":  false
+}

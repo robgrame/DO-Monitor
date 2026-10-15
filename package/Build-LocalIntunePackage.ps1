@@ -1,7 +1,7 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds the local-only DO collector IntuneWin package. Version: 2.8.6.
+    Builds the local-only DO collector IntuneWin package. Version: 2.9.8.
 .PARAMETER ToolPath
     Microsoft IntuneWinAppUtil.exe. Defaults to the existing repository tool.
 #>
@@ -15,7 +15,7 @@ try {
     if (-not $ToolPath) {
         $ToolPath = Join-Path $RepoRoot 'deploy\tools\Microsoft-Win32-Content-Prep-Tool-1.8.6\IntuneWinAppUtil.exe'
     }
-    $Version = (Get-Content -LiteralPath (Join-Path $RepoRoot 'VERSION') -Raw).Trim()
+    $Version = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'local\VERSION') -Raw).Trim()
     if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid package version: $Version" }
     $SourceDir = Join-Path $PSScriptRoot 'local\source'
     $BuildDir = Join-Path $PSScriptRoot "local\build\$Version"
